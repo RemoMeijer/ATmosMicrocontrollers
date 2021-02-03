@@ -1,21 +1,6 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-typedef struct {
-	unsigned char data;
-	unsigned int delay ;
-} PATTERN_STRUCT;
-
-PATTERN_STRUCT pattern[] = { 
-	{0x00, 100}, {0x01, 100}, {0x02, 100}, {0x04, 100}, {0x10, 100}, {0x20, 100}, {0x40, 100}, {0x80, 100},
-	{0x00, 100}, 
-	{0xAA,  50}, {0x55,  50}, 
-	{0xAA,  50}, {0x55,  50}, 
-	{0xAA,  50}, {0x55,  50}, 
-	{0x00, 100},
-	{0x81, 100}, {0x42, 100}, {0x24, 100}, {0x18, 100}, {0x0F, 200}, {0xF0, 200}, {0x0F, 200}, {0xF0, 200}
-};
-
 void wait( int ms )
 {
 	for (int i=0; i<ms; i++)
@@ -27,18 +12,24 @@ void wait( int ms )
 int main( void )
 {
 	DDRD = 0b11111111;					// PORTD all output 
-	int index = 0;
-		
+	int delay = 1000;
+	int changed = 0;
+	
 	while (1)
 	{
-		PORTD = pattern[index].data;
-		wait(pattern[index].delay);
-		index++;
-		
-		if(index == 25){
-			index = 0;
+		if(PINC & 0x1){
+			if(changed == 0){
+				changed = 1;
+				delay = delay == 1000? 250 : 1000;
+			}
+		} else {
+			changed = 0;
 		}
+		
+		PORTD = 0xFF;
+		wait(delay);
+		PORTD = 0x0;
+		wait(delay);
 	}
-
 	return 1;
 }
