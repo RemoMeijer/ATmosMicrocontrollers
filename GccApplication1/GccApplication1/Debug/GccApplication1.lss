@@ -3,29 +3,29 @@ GccApplication1.elf:     file format elf32-avr
 
 Sections:
 Idx Name          Size      VMA       LMA       File off  Algn
-  0 .data         00000000  00800100  00800100  00000134  2**0
+  0 .data         00000000  00800100  00800100  0000012c  2**0
                   CONTENTS, ALLOC, LOAD, DATA
-  1 .text         000000e0  00000000  00000000  00000054  2**1
+  1 .text         000000d8  00000000  00000000  00000054  2**1
                   CONTENTS, ALLOC, LOAD, READONLY, CODE
-  2 .comment      00000030  00000000  00000000  00000134  2**0
+  2 .comment      00000030  00000000  00000000  0000012c  2**0
                   CONTENTS, READONLY
-  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  00000164  2**2
+  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  0000015c  2**2
                   CONTENTS, READONLY
-  4 .debug_aranges 00000028  00000000  00000000  000001a0  2**0
+  4 .debug_aranges 00000028  00000000  00000000  00000198  2**0
                   CONTENTS, READONLY, DEBUGGING
-  5 .debug_info   000008fa  00000000  00000000  000001c8  2**0
+  5 .debug_info   000008fc  00000000  00000000  000001c0  2**0
                   CONTENTS, READONLY, DEBUGGING
-  6 .debug_abbrev 00000830  00000000  00000000  00000ac2  2**0
+  6 .debug_abbrev 00000830  00000000  00000000  00000abc  2**0
                   CONTENTS, READONLY, DEBUGGING
-  7 .debug_line   000002d3  00000000  00000000  000012f2  2**0
+  7 .debug_line   000002d1  00000000  00000000  000012ec  2**0
                   CONTENTS, READONLY, DEBUGGING
-  8 .debug_frame  00000034  00000000  00000000  000015c8  2**2
+  8 .debug_frame  00000034  00000000  00000000  000015c0  2**2
                   CONTENTS, READONLY, DEBUGGING
-  9 .debug_str    00000432  00000000  00000000  000015fc  2**0
+  9 .debug_str    00000432  00000000  00000000  000015f4  2**0
                   CONTENTS, READONLY, DEBUGGING
- 10 .debug_loc    0000006a  00000000  00000000  00001a2e  2**0
+ 10 .debug_loc    0000006a  00000000  00000000  00001a26  2**0
                   CONTENTS, READONLY, DEBUGGING
- 11 .debug_ranges 00000018  00000000  00000000  00001a98  2**0
+ 11 .debug_ranges 00000018  00000000  00000000  00001a90  2**0
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -110,7 +110,7 @@ Disassembly of section .text:
   94:	de bf       	out	0x3e, r29	; 62
   96:	cd bf       	out	0x3d, r28	; 61
   98:	11 d0       	rcall	.+34     	; 0xbc <main>
-  9a:	20 c0       	rjmp	.+64     	; 0xdc <_exit>
+  9a:	1c c0       	rjmp	.+56     	; 0xd4 <_exit>
 
 0000009c <__bad_interrupt>:
   9c:	b1 cf       	rjmp	.-158    	; 0x0 <__vectors>
@@ -156,44 +156,26 @@ int main( void )
 	DDRD = 0b11110111;			// All pins PORTD are set to output 
   bc:	87 ef       	ldi	r24, 0xF7	; 247
   be:	81 bb       	out	0x11, r24	; 17
-  c0:	09 c0       	rjmp	.+18     	; 0xd4 <main+0x18>
 	
 	while (1)
 	{
-		while(PINC & 0x01){		
-			PORTD = 0x01;
-  c2:	81 e0       	ldi	r24, 0x01	; 1
-  c4:	82 bb       	out	0x12, r24	; 18
-			wait(250);
-  c6:	8a ef       	ldi	r24, 0xFA	; 250
-  c8:	90 e0       	ldi	r25, 0x00	; 0
-  ca:	e9 df       	rcall	.-46     	; 0x9e <wait>
-			PORTD = 0x0;
-  cc:	12 ba       	out	0x12, r1	; 18
-			wait(250);
-  ce:	8a ef       	ldi	r24, 0xFA	; 250
-  d0:	90 e0       	ldi	r25, 0x00	; 0
-  d2:	e5 df       	rcall	.-54     	; 0x9e <wait>
-	
-	DDRD = 0b11110111;			// All pins PORTD are set to output 
-	
-	while (1)
-	{
-		while(PINC & 0x01){		
-  d4:	98 99       	sbic	0x13, 0	; 19
-  d6:	f5 cf       	rjmp	.-22     	; 0xc2 <main+0x6>
-			PORTD = 0x01;
-			wait(250);
-			PORTD = 0x0;
-			wait(250);
-		}
+		PORTD = 0x01;
+  c0:	81 e0       	ldi	r24, 0x01	; 1
+  c2:	82 bb       	out	0x12, r24	; 18
+		wait(500);
+  c4:	84 ef       	ldi	r24, 0xF4	; 244
+  c6:	91 e0       	ldi	r25, 0x01	; 1
+  c8:	ea df       	rcall	.-44     	; 0x9e <wait>
 		PORTD = 0x0;
-  d8:	12 ba       	out	0x12, r1	; 18
-	}
-  da:	fc cf       	rjmp	.-8      	; 0xd4 <main+0x18>
+  ca:	12 ba       	out	0x12, r1	; 18
+		wait(500);
+  cc:	84 ef       	ldi	r24, 0xF4	; 244
+  ce:	91 e0       	ldi	r25, 0x01	; 1
+  d0:	e6 df       	rcall	.-52     	; 0x9e <wait>
+  d2:	f6 cf       	rjmp	.-20     	; 0xc0 <main+0x4>
 
-000000dc <_exit>:
-  dc:	f8 94       	cli
+000000d4 <_exit>:
+  d4:	f8 94       	cli
 
-000000de <__stop_program>:
-  de:	ff cf       	rjmp	.-2      	; 0xde <__stop_program>
+000000d6 <__stop_program>:
+  d6:	ff cf       	rjmp	.-2      	; 0xd6 <__stop_program>

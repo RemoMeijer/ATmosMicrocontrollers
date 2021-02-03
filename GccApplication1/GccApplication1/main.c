@@ -17,13 +17,10 @@ int main( void )
 	
 	while (1)
 	{
-		while(PINC & 0x01){		
-			PORTD = 0x01;
-			wait(250);
-			PORTD = 0x0;
-			wait(250);
-		}
+		PORTD = 0x01;
+		wait(500);
 		PORTD = 0x0;
+		wait(500);
 	}
 
 	return 1;
