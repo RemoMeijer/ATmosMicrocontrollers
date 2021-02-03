@@ -1,6 +1,20 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
+typedef struct {
+	unsigned char data;
+	unsigned int delay ;
+} PATTERN_STRUCT;
+
+PATTERN_STRUCT pattern[] = { 
+	{0x00, 100}, {0x01, 100}, {0x02, 100}, {0x04, 100}, {0x10, 100}, {0x20, 100}, {0x40, 100}, {0x80, 100},
+	{0x00, 100}, 
+	{0xAA,  50}, {0x55,  50}, 
+	{0xAA,  50}, {0x55,  50}, 
+	{0xAA,  50}, {0x55,  50}, 
+	{0x00, 100},
+	{0x81, 100}, {0x42, 100}, {0x24, 100}, {0x18, 100}, {0x0F, 200}, {0xF0, 200}, {0x0F, 200}, {0xF0, 200}
+};
 
 void wait( int ms )
 {
@@ -12,23 +26,17 @@ void wait( int ms )
 
 int main( void )
 {
-	
-	DDRD = 0b11111111;			// All pins PORTD are set to output 
-	PORTD = 0x01;
-	int reverse = 0;
+	DDRD = 0b11111111;					// PORTD all output 
+	int index = 0;
+		
 	while (1)
 	{
-		wait(500);
-		if(PORTD == 0x80) {
-			reverse = 1;
-		} else if (PORTD == 0x01) {
-			reverse = 0;
-		}
+		PORTD = pattern[index].data;
+		wait(pattern[index].delay);
+		index++;
 		
-		if(reverse) {
-			PORTD = PORTD >> 1;
-		} else {
-			PORTD = PORTD << 1;
+		if(index == 25){
+			index = 0;
 		}
 	}
 
