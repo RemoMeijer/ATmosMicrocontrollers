@@ -3,29 +3,29 @@ GccApplication1.elf:     file format elf32-avr
 
 Sections:
 Idx Name          Size      VMA       LMA       File off  Algn
-  0 .data         00000000  00800100  00800100  0000012c  2**0
+  0 .data         00000000  00800100  00800100  00000152  2**0
                   CONTENTS, ALLOC, LOAD, DATA
-  1 .text         000000d8  00000000  00000000  00000054  2**1
+  1 .text         000000fe  00000000  00000000  00000054  2**1
                   CONTENTS, ALLOC, LOAD, READONLY, CODE
-  2 .comment      00000030  00000000  00000000  0000012c  2**0
+  2 .comment      00000030  00000000  00000000  00000152  2**0
                   CONTENTS, READONLY
-  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  0000015c  2**2
+  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  00000184  2**2
                   CONTENTS, READONLY
-  4 .debug_aranges 00000028  00000000  00000000  00000198  2**0
+  4 .debug_aranges 00000028  00000000  00000000  000001c0  2**0
                   CONTENTS, READONLY, DEBUGGING
-  5 .debug_info   000008fc  00000000  00000000  000001c0  2**0
+  5 .debug_info   000008f1  00000000  00000000  000001e8  2**0
                   CONTENTS, READONLY, DEBUGGING
-  6 .debug_abbrev 00000830  00000000  00000000  00000abc  2**0
+  6 .debug_abbrev 00000832  00000000  00000000  00000ad9  2**0
                   CONTENTS, READONLY, DEBUGGING
-  7 .debug_line   000002d1  00000000  00000000  000012ec  2**0
+  7 .debug_line   000002e5  00000000  00000000  0000130b  2**0
                   CONTENTS, READONLY, DEBUGGING
-  8 .debug_frame  00000034  00000000  00000000  000015c0  2**2
+  8 .debug_frame  00000034  00000000  00000000  000015f0  2**2
                   CONTENTS, READONLY, DEBUGGING
-  9 .debug_str    00000432  00000000  00000000  000015f4  2**0
+  9 .debug_str    0000043a  00000000  00000000  00001624  2**0
                   CONTENTS, READONLY, DEBUGGING
- 10 .debug_loc    0000006a  00000000  00000000  00001a26  2**0
+ 10 .debug_loc    0000009e  00000000  00000000  00001a5e  2**0
                   CONTENTS, READONLY, DEBUGGING
- 11 .debug_ranges 00000018  00000000  00000000  00001a90  2**0
+ 11 .debug_ranges 00000018  00000000  00000000  00001afc  2**0
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -110,7 +110,7 @@ Disassembly of section .text:
   94:	de bf       	out	0x3e, r29	; 62
   96:	cd bf       	out	0x3d, r28	; 61
   98:	11 d0       	rcall	.+34     	; 0xbc <main>
-  9a:	1c c0       	rjmp	.+56     	; 0xd4 <_exit>
+  9a:	2f c0       	rjmp	.+94     	; 0xfa <_exit>
 
 0000009c <__bad_interrupt>:
   9c:	b1 cf       	rjmp	.-158    	; 0x0 <__vectors>
@@ -153,29 +153,63 @@ void wait( int ms )
 int main( void )
 {
 	
-	DDRD = 0b11110111;			// All pins PORTD are set to output 
-  bc:	87 ef       	ldi	r24, 0xF7	; 247
+	DDRD = 0b11111111;			// All pins PORTD are set to output 
+  bc:	8f ef       	ldi	r24, 0xFF	; 255
   be:	81 bb       	out	0x11, r24	; 17
-	
-	while (1)
-	{
-		PORTD = 0x01;
+	PORTD = 0x01;
   c0:	81 e0       	ldi	r24, 0x01	; 1
   c2:	82 bb       	out	0x12, r24	; 18
+	int reverse = 0;
+  c4:	c0 e0       	ldi	r28, 0x00	; 0
+  c6:	d0 e0       	ldi	r29, 0x00	; 0
+	while (1)
+	{
 		wait(500);
-  c4:	84 ef       	ldi	r24, 0xF4	; 244
-  c6:	91 e0       	ldi	r25, 0x01	; 1
-  c8:	ea df       	rcall	.-44     	; 0x9e <wait>
-		PORTD = 0x0;
-  ca:	12 ba       	out	0x12, r1	; 18
+  c8:	84 ef       	ldi	r24, 0xF4	; 244
+  ca:	91 e0       	ldi	r25, 0x01	; 1
+  cc:	e8 df       	rcall	.-48     	; 0x9e <wait>
+		if(PORTD == 0x80) {
+  ce:	82 b3       	in	r24, 0x12	; 18
+  d0:	80 38       	cpi	r24, 0x80	; 128
+  d2:	21 f0       	breq	.+8      	; 0xdc <main+0x20>
+			reverse = 1;
+		} else if (PORTD == 0x01) {
+  d4:	82 b3       	in	r24, 0x12	; 18
+  d6:	81 30       	cpi	r24, 0x01	; 1
+  d8:	31 f4       	brne	.+12     	; 0xe6 <main+0x2a>
+  da:	03 c0       	rjmp	.+6      	; 0xe2 <main+0x26>
+	int reverse = 0;
+	while (1)
+	{
 		wait(500);
-  cc:	84 ef       	ldi	r24, 0xF4	; 244
-  ce:	91 e0       	ldi	r25, 0x01	; 1
-  d0:	e6 df       	rcall	.-52     	; 0x9e <wait>
-  d2:	f6 cf       	rjmp	.-20     	; 0xc0 <main+0x4>
+		if(PORTD == 0x80) {
+			reverse = 1;
+  dc:	c1 e0       	ldi	r28, 0x01	; 1
+  de:	d0 e0       	ldi	r29, 0x00	; 0
+  e0:	02 c0       	rjmp	.+4      	; 0xe6 <main+0x2a>
+		} else if (PORTD == 0x01) {
+			reverse = 0;
+  e2:	c0 e0       	ldi	r28, 0x00	; 0
+  e4:	d0 e0       	ldi	r29, 0x00	; 0
+		}
+		
+		if(reverse) {
+  e6:	20 97       	sbiw	r28, 0x00	; 0
+  e8:	21 f0       	breq	.+8      	; 0xf2 <main+0x36>
+			PORTD = PORTD >> 1;
+  ea:	82 b3       	in	r24, 0x12	; 18
+  ec:	86 95       	lsr	r24
+  ee:	82 bb       	out	0x12, r24	; 18
+  f0:	eb cf       	rjmp	.-42     	; 0xc8 <main+0xc>
+		} else {
+			PORTD = PORTD << 1;
+  f2:	82 b3       	in	r24, 0x12	; 18
+  f4:	88 0f       	add	r24, r24
+  f6:	82 bb       	out	0x12, r24	; 18
+  f8:	e7 cf       	rjmp	.-50     	; 0xc8 <main+0xc>
 
-000000d4 <_exit>:
-  d4:	f8 94       	cli
+000000fa <_exit>:
+  fa:	f8 94       	cli
 
-000000d6 <__stop_program>:
-  d6:	ff cf       	rjmp	.-2      	; 0xd6 <__stop_program>
+000000fc <__stop_program>:
+  fc:	ff cf       	rjmp	.-2      	; 0xfc <__stop_program>

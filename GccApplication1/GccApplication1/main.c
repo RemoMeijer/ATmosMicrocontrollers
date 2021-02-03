@@ -13,14 +13,23 @@ void wait( int ms )
 int main( void )
 {
 	
-	DDRD = 0b11110111;			// All pins PORTD are set to output 
-	
+	DDRD = 0b11111111;			// All pins PORTD are set to output 
+	PORTD = 0x01;
+	int reverse = 0;
 	while (1)
 	{
-		PORTD = 0x01;
 		wait(500);
-		PORTD = 0x0;
-		wait(500);
+		if(PORTD == 0x80) {
+			reverse = 1;
+		} else if (PORTD == 0x01) {
+			reverse = 0;
+		}
+		
+		if(reverse) {
+			PORTD = PORTD >> 1;
+		} else {
+			PORTD = PORTD << 1;
+		}
 	}
 
 	return 1;
