@@ -3,29 +3,29 @@ GccApplication1.elf:     file format elf32-avr
 
 Sections:
 Idx Name          Size      VMA       LMA       File off  Algn
-  0 .data         00000010  00800100  00000114  00000188  2**0
+  0 .data         00000078  00800100  0000011a  0000018e  2**0
                   CONTENTS, ALLOC, LOAD, DATA
-  1 .text         00000114  00000000  00000000  00000074  2**1
+  1 .text         0000011a  00000000  00000000  00000074  2**1
                   CONTENTS, ALLOC, LOAD, READONLY, CODE
-  2 .comment      00000030  00000000  00000000  00000198  2**0
+  2 .comment      00000030  00000000  00000000  00000206  2**0
                   CONTENTS, READONLY
-  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  000001c8  2**2
+  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  00000238  2**2
                   CONTENTS, READONLY
-  4 .debug_aranges 00000030  00000000  00000000  00000204  2**0
+  4 .debug_aranges 00000030  00000000  00000000  00000274  2**0
                   CONTENTS, READONLY, DEBUGGING
-  5 .debug_info   000009bb  00000000  00000000  00000234  2**0
+  5 .debug_info   00000995  00000000  00000000  000002a4  2**0
                   CONTENTS, READONLY, DEBUGGING
-  6 .debug_abbrev 00000887  00000000  00000000  00000bef  2**0
+  6 .debug_abbrev 0000086e  00000000  00000000  00000c39  2**0
                   CONTENTS, READONLY, DEBUGGING
-  7 .debug_line   000002f1  00000000  00000000  00001476  2**0
+  7 .debug_line   000002f2  00000000  00000000  000014a7  2**0
                   CONTENTS, READONLY, DEBUGGING
-  8 .debug_frame  00000044  00000000  00000000  00001768  2**2
+  8 .debug_frame  00000044  00000000  00000000  0000179c  2**2
                   CONTENTS, READONLY, DEBUGGING
-  9 .debug_str    00000473  00000000  00000000  000017ac  2**0
+  9 .debug_str    00000473  00000000  00000000  000017e0  2**0
                   CONTENTS, READONLY, DEBUGGING
- 10 .debug_loc    000000d7  00000000  00000000  00001c1f  2**0
+ 10 .debug_loc    000000d7  00000000  00000000  00001c53  2**0
                   CONTENTS, READONLY, DEBUGGING
- 11 .debug_ranges 00000020  00000000  00000000  00001cf6  2**0
+ 11 .debug_ranges 00000020  00000000  00000000  00001d2a  2**0
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -114,38 +114,32 @@ Disassembly of section .text:
   98:	11 e0       	ldi	r17, 0x01	; 1
   9a:	a0 e0       	ldi	r26, 0x00	; 0
   9c:	b1 e0       	ldi	r27, 0x01	; 1
-  9e:	e4 e1       	ldi	r30, 0x14	; 20
+  9e:	ea e1       	ldi	r30, 0x1A	; 26
   a0:	f1 e0       	ldi	r31, 0x01	; 1
   a2:	00 e0       	ldi	r16, 0x00	; 0
   a4:	0b bf       	out	0x3b, r16	; 59
   a6:	02 c0       	rjmp	.+4      	; 0xac <__do_copy_data+0x14>
   a8:	07 90       	elpm	r0, Z+
   aa:	0d 92       	st	X+, r0
-  ac:	a0 31       	cpi	r26, 0x10	; 16
+  ac:	a8 37       	cpi	r26, 0x78	; 120
   ae:	b1 07       	cpc	r27, r17
   b0:	d9 f7       	brne	.-10     	; 0xa8 <__do_copy_data+0x10>
-  b2:	1d d0       	rcall	.+58     	; 0xee <main>
-  b4:	2d c0       	rjmp	.+90     	; 0x110 <_exit>
+  b2:	11 d0       	rcall	.+34     	; 0xd6 <main>
+  b4:	30 c0       	rjmp	.+96     	; 0x116 <_exit>
 
 000000b6 <__bad_interrupt>:
   b6:	a4 cf       	rjmp	.-184    	; 0x0 <__vectors>
 
 000000b8 <wait>:
-	0b01110001, //F
-};
-
-void wait( int ms )
+void display(int number)
 {
-	for (int i=0; i<ms; i++)
+	if(number > 15){
+		PORTE = Numers[14];
+		} else {
+		PORTE = Numers[number];
   b8:	20 e0       	ldi	r18, 0x00	; 0
   ba:	30 e0       	ldi	r19, 0x00	; 0
   bc:	08 c0       	rjmp	.+16     	; 0xce <wait+0x16>
-	#else
-		//round up by default
-		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
-	#endif
-
-	__builtin_avr_delay_cycles(__ticks_dc);
   be:	ef ec       	ldi	r30, 0xCF	; 207
   c0:	f7 e0       	ldi	r31, 0x07	; 7
   c2:	31 97       	sbiw	r30, 0x01	; 1
@@ -157,76 +151,66 @@ void wait( int ms )
   ce:	28 17       	cp	r18, r24
   d0:	39 07       	cpc	r19, r25
   d2:	ac f3       	brlt	.-22     	; 0xbe <wait+0x6>
-	{
-		_delay_ms( 1 );        // library function (max 30 ms at 8MHz)
-	}
-}
   d4:	08 95       	ret
 
-000000d6 <display>:
-
-void display(int number)
-{
-	if(number > 15){
-  d6:	80 31       	cpi	r24, 0x10	; 16
-  d8:	91 05       	cpc	r25, r1
-  da:	1c f0       	brlt	.+6      	; 0xe2 <display+0xc>
-		PORTE = Numers[14];
-  dc:	89 e7       	ldi	r24, 0x79	; 121
-  de:	83 b9       	out	0x03, r24	; 3
-  e0:	08 95       	ret
-		} else {
-		PORTE = Numers[number];
-  e2:	fc 01       	movw	r30, r24
-  e4:	e0 50       	subi	r30, 0x00	; 0
-  e6:	ff 4f       	sbci	r31, 0xFF	; 255
-  e8:	80 81       	ld	r24, Z
-  ea:	83 b9       	out	0x03, r24	; 3
-  ec:	08 95       	ret
-
-000000ee <main>:
+000000d6 <main>:
 }
 
 
 int main( void )
 {
 	DDRE = 0b11111111;                    // PORTD all output
-  ee:	8f ef       	ldi	r24, 0xFF	; 255
-  f0:	82 b9       	out	0x02, r24	; 2
+  d6:	8f ef       	ldi	r24, 0xFF	; 255
+  d8:	82 b9       	out	0x02, r24	; 2
 	int i = 0;
-  f2:	c0 e0       	ldi	r28, 0x00	; 0
-  f4:	d0 e0       	ldi	r29, 0x00	; 0
-  f6:	02 c0       	rjmp	.+4      	; 0xfc <main+0xe>
+  da:	c0 e0       	ldi	r28, 0x00	; 0
+  dc:	d0 e0       	ldi	r29, 0x00	; 0
+  de:	02 c0       	rjmp	.+4      	; 0xe4 <main+0xe>
 	{
-		display(i);
-		wait(1000);
-		i = i + 1;
-		if(i == 20){
+		PORTE = pattern[i].data;
+		wait(pattern[i].delay);
+		i++;
+		if(pattern[i].delay == 0){
 			i = 0;
-  f8:	c0 e0       	ldi	r28, 0x00	; 0
-  fa:	d0 e0       	ldi	r29, 0x00	; 0
+  e0:	c0 e0       	ldi	r28, 0x00	; 0
+  e2:	d0 e0       	ldi	r29, 0x00	; 0
 	DDRE = 0b11111111;                    // PORTD all output
 	int i = 0;
 
 	while (1)
 	{
-		display(i);
-  fc:	ce 01       	movw	r24, r28
-  fe:	eb df       	rcall	.-42     	; 0xd6 <display>
-		wait(1000);
- 100:	88 ee       	ldi	r24, 0xE8	; 232
- 102:	93 e0       	ldi	r25, 0x03	; 3
- 104:	d9 df       	rcall	.-78     	; 0xb8 <wait>
-		i = i + 1;
- 106:	21 96       	adiw	r28, 0x01	; 1
-		if(i == 20){
- 108:	c4 31       	cpi	r28, 0x14	; 20
- 10a:	d1 05       	cpc	r29, r1
- 10c:	b9 f7       	brne	.-18     	; 0xfc <main+0xe>
- 10e:	f4 cf       	rjmp	.-24     	; 0xf8 <main+0xa>
+		PORTE = pattern[i].data;
+  e4:	fe 01       	movw	r30, r28
+  e6:	ee 0f       	add	r30, r30
+  e8:	ff 1f       	adc	r31, r31
+  ea:	ec 0f       	add	r30, r28
+  ec:	fd 1f       	adc	r31, r29
+  ee:	e0 50       	subi	r30, 0x00	; 0
+  f0:	ff 4f       	sbci	r31, 0xFF	; 255
+  f2:	80 81       	ld	r24, Z
+  f4:	83 b9       	out	0x03, r24	; 3
+		wait(pattern[i].delay);
+  f6:	81 81       	ldd	r24, Z+1	; 0x01
+  f8:	92 81       	ldd	r25, Z+2	; 0x02
+  fa:	de df       	rcall	.-68     	; 0xb8 <wait>
+		i++;
+  fc:	21 96       	adiw	r28, 0x01	; 1
+		if(pattern[i].delay == 0){
+  fe:	fe 01       	movw	r30, r28
+ 100:	ee 0f       	add	r30, r30
+ 102:	ff 1f       	adc	r31, r31
+ 104:	ec 0f       	add	r30, r28
+ 106:	fd 1f       	adc	r31, r29
+ 108:	e0 50       	subi	r30, 0x00	; 0
+ 10a:	ff 4f       	sbci	r31, 0xFF	; 255
+ 10c:	81 81       	ldd	r24, Z+1	; 0x01
+ 10e:	92 81       	ldd	r25, Z+2	; 0x02
+ 110:	89 2b       	or	r24, r25
+ 112:	31 f3       	breq	.-52     	; 0xe0 <main+0xa>
+ 114:	e7 cf       	rjmp	.-50     	; 0xe4 <main+0xe>
 
-00000110 <_exit>:
- 110:	f8 94       	cli
+00000116 <_exit>:
+ 116:	f8 94       	cli
 
-00000112 <__stop_program>:
- 112:	ff cf       	rjmp	.-2      	; 0x112 <__stop_program>
+00000118 <__stop_program>:
+ 118:	ff cf       	rjmp	.-2      	; 0x118 <__stop_program>
