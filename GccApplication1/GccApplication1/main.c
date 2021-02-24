@@ -1,159 +1,65 @@
-#define F_CPU 8e6
+/*
+ * Lesvoorbeeld_atmega2560.c
+ *
+ * Created: 10/02/2020 18:26:21
+ * Author : Etienne
+ */ 
+
+#define F_CPU 16e6
+
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
-#define LCD_E 	3
-#define LCD_RS	2
 
-void lcd_strobe_lcd_e(void);
-void init_4bits_mode(void);
-void lcd_write_string(char *str);
-void lcd_write_data(unsigned char byte);
-void lcd_write_cmd(unsigned char byte);
-
-void lcd_strobe_lcd_e(void) {
-	PORTC |= (1<<LCD_E);	// E high
-	_delay_ms(1);			// nodig
-	PORTC &= ~(1<<LCD_E);  	// E low
-	_delay_ms(1);			// nodig?
-}
-
-void init_4bits_mode(void) {
-	// PORTC output mode and all low (also E and RS pin)
-	DDRC = 0xFF;
-	PORTC = 0x00;
-
-	// Step 2 (table 12)
-	PORTC = 0x20;	// function set
-	lcd_strobe_lcd_e();
-
-	// Step 3 (table 12)
-	PORTC = 0x20;   // function set
-	lcd_strobe_lcd_e();
-	PORTC = 0x80;
-	lcd_strobe_lcd_e();
-
-	// Step 4 (table 12)
-	PORTC = 0x00;   // Display on/off control
-	lcd_strobe_lcd_e();
-	PORTC = 0xF0;
-	lcd_strobe_lcd_e();
-
-	// Step 4 (table 12)
-	PORTC = 0x00;   // Entry mode set
-	lcd_strobe_lcd_e();
-	PORTC = 0x60;
-	lcd_strobe_lcd_e();
-
-}
-
-void lcd_write_string(char *str) {
-	for(;*str; str++){
-		lcd_write_data(*str);
+// Build in led Arduino on PB7 (pin 13)
+void wait( int ms ) {
+	for (int i=0; i<ms; i++) {
+		_delay_ms( 1 );		// library function (max 30 ms at 8MHz)
 	}
 }
 
-void lcd_write_data(unsigned char byte) {
-	// First nibble.
-	PORTC = byte;
-	PORTC |= (1<<LCD_RS);
-	lcd_strobe_lcd_e();
+void setupTimer(void) {
 
-	// Second nibble
-	PORTC = (byte<<4);
-	PORTC |= (1<<LCD_RS);
-	lcd_strobe_lcd_e();
+	 cli(); // Disable interrupts
+
+	 // SETUP CLOCK AT FREQUENCY OF 1 HZ
+	 TCCR1A = 0;// set entire TCCR1A register to 0
+	 TCCR1B = 0;// same for TCCR1B
+	 TCNT1  = 0;//initialize counter value to 0
+	 // set compare match register for 1hz increments
+	 OCR1A = 15624;// = (16*10^6) / (1*1024) - 1 (must be <65536)
+	 // turn on CTC mode
+	 TCCR1B |= (1 << WGM12);
+	 // Set CS12 and CS10 bits for 1024 prescaler  (pg 130)
+	 TCCR1B |= (1 << CS12) | (1 << CS10);
+	 // enable timer compare interrupt
+	 TIMSK |= (1 << OCIE3A);
+
+	 sei();//allow interrupts
 }
 
-void lcd_write_command(unsigned char byte)
-{
-	// First nibble.
-	PORTC = byte;
-	PORTC &= ~(1<<LCD_RS);
-	lcd_strobe_lcd_e();
-
-	// Second nibble
-	PORTC = (byte<<4);
-	PORTC &= ~(1<<LCD_RS);
-	lcd_strobe_lcd_e();
+void timer1Init(){
+	OCR1A = 788;
+	TIMSK |= (1 << 4);
+	sei();
+	TCCR1A = 0b0;
+	TCCR1B = 0b1100;
 }
 
-char bin_to_char(unsigned char bin){
-	char returnChar = '0';
-	if(bin < 0b00010000){
-		switch(bin){
-			case 0b00000001 :
-			returnChar = '1';
-			break;
-			case 0b00000010 :
-			returnChar = '2';
-			break;
-			case 0b00000011 :
-			returnChar = '3';
-			break;
-			case 0b00000100 :
-			returnChar = '4';
-			break;
-			case 0b00000101 :
-			returnChar = '5';
-			break;
-			case 0b00000110 :
-			returnChar = '6';
-			break;
-			case 0b00000111 :
-			returnChar = '7';
-			break;
-			case 0b00001000:
-			returnChar = '8';
-			break;
-			case 0b00001001:
-			returnChar = '9';
-			break;
-			case 0b00001010:
-			returnChar = 'A';
-			break;
-			case 0b00001011:
-			returnChar = 'B';
-			break;
-			case 0b00001100:
-			returnChar = 'C';
-			break;
-			case 0b00001101:
-			returnChar = 'D';
-			break;
-			case 0b00001110:
-			returnChar = 'E';
-			break;
-			case 0b00001111:
-			returnChar = 'F';
-			break;
-		}
-	}
-	return returnChar;	
+
+ISR(TIMER1_COMPA_vect){//timer1 interrupt 1Hz toggles pin 13 (LED)
+	//generates pulse wave of frequency 1Hz/2 = 0.5kHz (takes two cycles for full wave- toggle high then toggle low)
+	PORTB ^= (1<<7);
+	OCR1A = OCR1A == 473? 473 : 788;
 }
 
-int main( void ) {
-	
-	DDRD &= ~(1 << 7);
+
+int main(void) {
 	DDRB = 0xFF;
-	TCCR2 = 0b00000111;
-
-	// Init LCD
-	init_4bits_mode();
-	
-	lcd_write_command(0x01);
-	
-	// Loop forever
-	while (1) {	
-		lcd_write_command(0x01);
-
-		
-		lcd_write_data(bin_to_char(TCNT2 >> 4));
-		lcd_write_data(bin_to_char(TCNT2 & 0b1111));
-
-		PORTB = TCNT2;
-		_delay_ms( 250 );
-	}
-	return 1;
-}Q
+	timer1Init();
+    while (1)  {
+		wait(50);
+    }
+	return 0;
+}
