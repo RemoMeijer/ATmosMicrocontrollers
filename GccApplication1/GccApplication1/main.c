@@ -1,5 +1,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #define F_CPU 8e6
 #define BIT(x) ( 1<<x )
@@ -103,6 +105,19 @@ void spi_writeWord ( unsigned char adress, unsigned char data )
 	spi_slaveDeSelect(0); // Deselect display chip
 }
 
+void writeLedDisplay( int value )
+{
+	if (value > 9999) { return; }
+		
+	char *valueString = calloc(4, sizeof(char));
+	sprintf(valueString, "%d", value);
+	
+	for (int i = 4; i > 0; i--)
+	{
+		spi_writeWord(i, valueString[4 - i]);
+	}
+	free(valueString);
+}
 
 int main()
 {
@@ -118,12 +133,7 @@ int main()
 	
 	wait(1000);
 	
-	// write 4-digit data
-	for (char i =1; i<=4; i++)
-	{
-		spi_writeWord(i,i);
-		wait(1000);
-	}
+	writeLedDisplay(9876);
 	
 	wait(1000);
 	return (1);
