@@ -1,127 +1,126 @@
-#define F_CPU 8e6
 #include <avr/io.h>
 #include <util/delay.h>
-#include <avr/interrupt.h>
-#include <stdio.h>
-#include <stdlib.h>
 
-#define LCD_E 	3
-#define LCD_RS	2
+#define F_CPU 8e6
+#define BIT(x) ( 1<<x )
+#define DDR_SPI DDRB // spi Data direction register
+#define PORT_SPI PORTB // spi Output register
+#define SPI_SCK 1 // PB1: spi Pin System Clock
+#define SPI_MOSI 2 // PB2: spi Pin MOSI
+#define SPI_MISO 3 // PB3: spi Pin MISO
+#define SPI_SS 0 // PB0: spi Pin Slave Select
 
-void lcd_strobe_lcd_e(void);
-void init_4bits_mode(void);
-void lcd_write_string(char *str);
-void lcd_write_data(unsigned char byte);
-void lcd_write_cmd(unsigned char byte);
-
-void lcd_strobe_lcd_e(void) {
-	PORTC |= (1<<LCD_E);	// E high
-	_delay_ms(1);			// nodig
-	PORTC &= ~(1<<LCD_E);  	// E low
-	_delay_ms(1);			// nodig?
-}
-
-void init_4bits_mode(void) {
-	// PORTC output mode and all low (also E and RS pin)
-	DDRC = 0xFF;
-	PORTC = 0x00;
-
-	// Step 2 (table 12)
-	PORTC = 0x20;	// function set
-	lcd_strobe_lcd_e();
-
-	// Step 3 (table 12)
-	PORTC = 0x20;   // function set
-	lcd_strobe_lcd_e();
-	PORTC = 0x80;
-	lcd_strobe_lcd_e();
-
-	// Step 4 (table 12)
-	PORTC = 0x00;   // Display on/off control
-	lcd_strobe_lcd_e();
-	PORTC = 0xF0;
-	lcd_strobe_lcd_e();
-
-	// Step 4 (table 12)
-	PORTC = 0x00;   // Entry mode set
-	lcd_strobe_lcd_e();
-	PORTC = 0x60;
-	lcd_strobe_lcd_e();
-
-}
-
-void lcd_write_string(char *str) {
-	for(;*str; str++){
-		lcd_write_data(*str);
-	}
-}
-
-void lcd_write_data(unsigned char byte) {
-	// First nibble.
-	PORTC = byte;
-	PORTC |= (1<<LCD_RS);
-	lcd_strobe_lcd_e();
-
-	// Second nibble
-	PORTC = (byte<<4);
-	PORTC |= (1<<LCD_RS);
-	lcd_strobe_lcd_e();
-}
-
-void lcd_write_command(unsigned char byte)
+// wait(): busy waiting for 'ms' millisecond - used library: util/delay.h
+void wait(int ms)
 {
-	// First nibble.
-	PORTC = byte;
-	PORTC &= ~(1<<LCD_RS);
-	lcd_strobe_lcd_e();
-
-	// Second nibble
-	PORTC = (byte<<4);
-	PORTC &= ~(1<<LCD_RS);
-	lcd_strobe_lcd_e();
+	for (int i=0; i<ms; i++)
+	_delay_ms(1);
 }
 
-void wait( int ms ) {
-	for (int i=0; i<ms; i++) {
-		_delay_ms( 1 );		// library function (max 30 ms at 8MHz)
-	}
-}
-
-void adcInit( void )
+void spi_masterInit(void)
 {
-	ADMUX = 0b11100011;
-	ADCSRA = 0b10000110;
+	DDR_SPI = 0xff; // All pins output: MOSI, SCK, SS, SS_display
+	DDR_SPI &= ~BIT(SPI_MISO); // except: MISO input
+	PORT_SPI |= BIT(SPI_SS); // SS_ADC == 1: deselect slave
+	SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR1); // or: SPCR = 0b11010010;
+	// Enable spi, MasterMode, Clock rate fck/64
+	// bitrate=125kHz, Mode = 0: CPOL=0, CPPH=0
 }
 
+// Write a byte from master to slave
+void spi_write( unsigned char data )
+{
+	SPDR = data; // Load byte --> starts transmission
+	while( !(SPSR & BIT(SPIF)) ); // Wait for transmission complete
+}
 
-int main( void ) {
-	char *temperature = calloc(1, 25);
+// Write a byte from master to slave and read a byte from slave - not used here
+char spi_writeRead( unsigned char data )
+{
+	SPDR = data; // Load byte --> starts transmission
+	while( !(SPSR & BIT(SPIF)) ); // Wait for transmission complete
+	data = SPDR; // New received data (eventually, MISO) in SPDR
+	return data; // Return received byte
+}
+
+// Select device on pinnumer PORTB
+void spi_slaveSelect(unsigned char chipNumber)
+{	
+	PORTB &= ~BIT(chipNumber);
+}
+
+// Deselect device on pinnumer PORTB
+void spi_slaveDeSelect(unsigned char chipNumber)
+{	
+	PORTB |= BIT(chipNumber);
+}
+
+// Initialize the driver chip (type MAX 7219)
+void displayDriverInit()
+{
+	spi_slaveSelect(0); // Select display chip (MAX7219)
+	 spi_write(0x09); // Register 09: Decode Mode
+	 spi_write(0xFF); // -> 1's = BCD mode for all digits
+	 spi_slaveDeSelect(0); // Deselect display chip
+	 spi_slaveSelect(0); // Select dispaly chip
+	 spi_write(0x0A); // Register 0A: Intensity
+	 spi_write(0x04); // -> Level 4 (in range [1..F])
+	 spi_slaveDeSelect(0); // Deselect display chip
+	 spi_slaveSelect(0); // Select display chip
+	 spi_write(0x0B); // Register 0B: Scan-limit
+	 spi_write(0x01); // -> 1 = Display digits 0..1
+	 spi_slaveDeSelect(0); // Deselect display chip
+	 spi_slaveSelect(0); // Select display chip
+	 spi_write(0x0C); // Register 0B: Shutdown register
+	 spi_write(0x01); // -> 1 = Normal operation
+	 spi_slaveDeSelect(0); // Deselect display chip
+}
+
+// Set display on ('normal operation')
+void displayOn()
+{
+	 spi_slaveSelect(0); // Select display chip
+	 spi_write(0x0C); // Register 0B: Shutdown register
+	 spi_write(0x01); // -> 1 = Normal operation
+	 spi_slaveDeSelect(0); // Deselect display chip
+}
+
+// Set display off ('shut down')
+void displayOff()
+{
+	 spi_slaveSelect(0); // Select display chip
+	 spi_write(0x0C); // Register 0B: Shutdown register
+	 spi_write(0x00); // -> 1 = Normal operation
+	 spi_slaveDeSelect(0); // Deselect display chip
+}
+
+int main()
+{
+	DDRB=0x01; // Set PB0 pin as output for display select
+	spi_masterInit(); // Initialize spi module
+	displayDriverInit(); // Initialize display chip
 	
-	DDRF = 0x00;
-	DDRA = 0xFF;
-	DDRB = 0xFF;
-	adcInit();
-
-	// Init LCD
-	init_4bits_mode();
-	
-	lcd_write_command(0x01);
-	
-	// Loop forever
-	while (1) {
-		ADCSRA |= (1 << 6);
-		while ( ADCSRA & (1 << 6) ) ;
-		PORTA = ADCH;
-
-		lcd_write_command(0x01);
-		
-		sprintf(temperature, "%d", ADCH);
-		
-		lcd_write_string(temperature);
-
-		wait(100);
+	// clear display (all zero's)
+	for (char i =1; i<=2; i++)
+	{
+		spi_slaveSelect(0); // Select display chip
+		spi_write(i); // digit adress: (digit place)
+		spi_write(0); // digit value: 0
+		spi_slaveDeSelect(0); // Deselect display chip
 	}
 	
-	free(temperature);
-	return 1;
+	wait(1000);
+	
+	// write 4-digit data
+	for (char i =1; i<=2; i++)
+	{
+		spi_slaveSelect(0); // Select display chip
+		spi_write(i); // digit adress: (digit place)
+		spi_write(i); // digit value: i (= digit place)
+		spi_slaveDeSelect(0); // Deselect display chip
+		wait(1000);
+	}
+	
+	wait(1000);
+	return (1);
 }

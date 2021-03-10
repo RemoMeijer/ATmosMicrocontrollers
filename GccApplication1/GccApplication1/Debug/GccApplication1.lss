@@ -3,29 +3,29 @@ GccApplication1.elf:     file format elf32-avr
 
 Sections:
 Idx Name          Size      VMA       LMA       File off  Algn
-  0 .data         00000000  00800100  00800100  00000140  2**0
+  0 .data         00000000  00800100  00800100  000001fa  2**0
                   CONTENTS, ALLOC, LOAD, DATA
-  1 .text         000000ec  00000000  00000000  00000054  2**1
+  1 .text         000001a6  00000000  00000000  00000054  2**1
                   CONTENTS, ALLOC, LOAD, READONLY, CODE
-  2 .comment      00000030  00000000  00000000  00000140  2**0
+  2 .comment      00000030  00000000  00000000  000001fa  2**0
                   CONTENTS, READONLY
-  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  00000170  2**2
+  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  0000022c  2**2
                   CONTENTS, READONLY
-  4 .debug_aranges 00000030  00000000  00000000  000001ac  2**0
+  4 .debug_aranges 00000068  00000000  00000000  00000268  2**0
                   CONTENTS, READONLY, DEBUGGING
-  5 .debug_info   00000900  00000000  00000000  000001dc  2**0
+  5 .debug_info   00000cbd  00000000  00000000  000002d0  2**0
                   CONTENTS, READONLY, DEBUGGING
-  6 .debug_abbrev 00000846  00000000  00000000  00000adc  2**0
+  6 .debug_abbrev 000008ab  00000000  00000000  00000f8d  2**0
                   CONTENTS, READONLY, DEBUGGING
-  7 .debug_line   000002f9  00000000  00000000  00001322  2**0
+  7 .debug_line   000004c4  00000000  00000000  00001838  2**0
                   CONTENTS, READONLY, DEBUGGING
-  8 .debug_frame  00000044  00000000  00000000  0000161c  2**2
+  8 .debug_frame  000000bc  00000000  00000000  00001cfc  2**2
                   CONTENTS, READONLY, DEBUGGING
-  9 .debug_str    0000043a  00000000  00000000  00001660  2**0
+  9 .debug_str    000004b2  00000000  00000000  00001db8  2**0
                   CONTENTS, READONLY, DEBUGGING
- 10 .debug_loc    0000006a  00000000  00000000  00001a9a  2**0
+ 10 .debug_loc    000000e8  00000000  00000000  0000226a  2**0
                   CONTENTS, READONLY, DEBUGGING
- 11 .debug_ranges 00000020  00000000  00000000  00001b04  2**0
+ 11 .debug_ranges 00000058  00000000  00000000  00002352  2**0
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -109,28 +109,22 @@ Disassembly of section .text:
   92:	d0 e1       	ldi	r29, 0x10	; 16
   94:	de bf       	out	0x3e, r29	; 62
   96:	cd bf       	out	0x3d, r28	; 61
-  98:	16 d0       	rcall	.+44     	; 0xc6 <main>
-  9a:	26 c0       	rjmp	.+76     	; 0xe8 <_exit>
+  98:	58 d0       	rcall	.+176    	; 0x14a <main>
+  9a:	83 c0       	rjmp	.+262    	; 0x1a2 <_exit>
 
 0000009c <__bad_interrupt>:
   9c:	b1 cf       	rjmp	.-158    	; 0x0 <__vectors>
 
 0000009e <wait>:
-#include <avr/interrupt.h>
-
-
-// Build in led Arduino on PB7 (pin 13)
-void wait( int ms ) {
-	for (int i=0; i<ms; i++) {
+void displayOff()
+{
+	 spi_slaveSelect(0); // Select display chip
+	 spi_write(0x0C); // Register 0B: Shutdown register
+	 spi_write(0x00); // -> 1 = Normal operation
+	 spi_slaveDeSelect(0); // Deselect display chip
   9e:	20 e0       	ldi	r18, 0x00	; 0
   a0:	30 e0       	ldi	r19, 0x00	; 0
   a2:	08 c0       	rjmp	.+16     	; 0xb4 <wait+0x16>
-	#else
-		//round up by default
-		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
-	#endif
-
-	__builtin_avr_delay_cycles(__ticks_dc);
   a4:	ef ec       	ldi	r30, 0xCF	; 207
   a6:	f7 e0       	ldi	r31, 0x07	; 7
   a8:	31 97       	sbiw	r30, 0x01	; 1
@@ -142,57 +136,186 @@ void wait( int ms ) {
   b4:	28 17       	cp	r18, r24
   b6:	39 07       	cpc	r19, r25
   b8:	ac f3       	brlt	.-22     	; 0xa4 <wait+0x6>
-		_delay_ms( 1 );		// library function (max 30 ms at 8MHz)
-	}
-}
   ba:	08 95       	ret
 
-000000bc <adcInit>:
+000000bc <spi_masterInit>:
+  bc:	8f ef       	ldi	r24, 0xFF	; 255
+  be:	87 bb       	out	0x17, r24	; 23
+  c0:	87 b3       	in	r24, 0x17	; 23
+  c2:	87 7f       	andi	r24, 0xF7	; 247
+  c4:	87 bb       	out	0x17, r24	; 23
+  c6:	88 b3       	in	r24, 0x18	; 24
+  c8:	81 60       	ori	r24, 0x01	; 1
+  ca:	88 bb       	out	0x18, r24	; 24
+  cc:	82 e5       	ldi	r24, 0x52	; 82
+  ce:	8d b9       	out	0x0d, r24	; 13
+  d0:	08 95       	ret
 
-void adcInit( void )
-{
-	ADMUX = 0b11100011;			
-  bc:	83 ee       	ldi	r24, 0xE3	; 227
-  be:	87 b9       	out	0x07, r24	; 7
-	ADCSRA = 0b10000110;		
-  c0:	86 e8       	ldi	r24, 0x86	; 134
-  c2:	86 b9       	out	0x06, r24	; 6
-  c4:	08 95       	ret
+000000d2 <spi_write>:
+  d2:	8f b9       	out	0x0f, r24	; 15
+  d4:	77 9b       	sbis	0x0e, 7	; 14
+  d6:	fe cf       	rjmp	.-4      	; 0xd4 <spi_write+0x2>
+  d8:	08 95       	ret
 
-000000c6 <main>:
+000000da <spi_slaveSelect>:
+  da:	98 b3       	in	r25, 0x18	; 24
+  dc:	21 e0       	ldi	r18, 0x01	; 1
+  de:	30 e0       	ldi	r19, 0x00	; 0
+  e0:	02 c0       	rjmp	.+4      	; 0xe6 <spi_slaveSelect+0xc>
+  e2:	22 0f       	add	r18, r18
+  e4:	33 1f       	adc	r19, r19
+  e6:	8a 95       	dec	r24
+  e8:	e2 f7       	brpl	.-8      	; 0xe2 <spi_slaveSelect+0x8>
+  ea:	20 95       	com	r18
+  ec:	29 23       	and	r18, r25
+  ee:	28 bb       	out	0x18, r18	; 24
+  f0:	08 95       	ret
+
+000000f2 <spi_slaveDeSelect>:
+  f2:	98 b3       	in	r25, 0x18	; 24
+  f4:	21 e0       	ldi	r18, 0x01	; 1
+  f6:	30 e0       	ldi	r19, 0x00	; 0
+  f8:	02 c0       	rjmp	.+4      	; 0xfe <spi_slaveDeSelect+0xc>
+  fa:	22 0f       	add	r18, r18
+  fc:	33 1f       	adc	r19, r19
+  fe:	8a 95       	dec	r24
+ 100:	e2 f7       	brpl	.-8      	; 0xfa <spi_slaveDeSelect+0x8>
+ 102:	29 2b       	or	r18, r25
+ 104:	28 bb       	out	0x18, r18	; 24
+ 106:	08 95       	ret
+
+00000108 <displayDriverInit>:
+ 108:	80 e0       	ldi	r24, 0x00	; 0
+ 10a:	e7 df       	rcall	.-50     	; 0xda <spi_slaveSelect>
+ 10c:	89 e0       	ldi	r24, 0x09	; 9
+ 10e:	e1 df       	rcall	.-62     	; 0xd2 <spi_write>
+ 110:	8f ef       	ldi	r24, 0xFF	; 255
+ 112:	df df       	rcall	.-66     	; 0xd2 <spi_write>
+ 114:	80 e0       	ldi	r24, 0x00	; 0
+ 116:	ed df       	rcall	.-38     	; 0xf2 <spi_slaveDeSelect>
+ 118:	80 e0       	ldi	r24, 0x00	; 0
+ 11a:	df df       	rcall	.-66     	; 0xda <spi_slaveSelect>
+ 11c:	8a e0       	ldi	r24, 0x0A	; 10
+ 11e:	d9 df       	rcall	.-78     	; 0xd2 <spi_write>
+ 120:	84 e0       	ldi	r24, 0x04	; 4
+ 122:	d7 df       	rcall	.-82     	; 0xd2 <spi_write>
+ 124:	80 e0       	ldi	r24, 0x00	; 0
+ 126:	e5 df       	rcall	.-54     	; 0xf2 <spi_slaveDeSelect>
+ 128:	80 e0       	ldi	r24, 0x00	; 0
+ 12a:	d7 df       	rcall	.-82     	; 0xda <spi_slaveSelect>
+ 12c:	8b e0       	ldi	r24, 0x0B	; 11
+ 12e:	d1 df       	rcall	.-94     	; 0xd2 <spi_write>
+ 130:	81 e0       	ldi	r24, 0x01	; 1
+ 132:	cf df       	rcall	.-98     	; 0xd2 <spi_write>
+ 134:	80 e0       	ldi	r24, 0x00	; 0
+ 136:	dd df       	rcall	.-70     	; 0xf2 <spi_slaveDeSelect>
+ 138:	80 e0       	ldi	r24, 0x00	; 0
+ 13a:	cf df       	rcall	.-98     	; 0xda <spi_slaveSelect>
+ 13c:	8c e0       	ldi	r24, 0x0C	; 12
+ 13e:	c9 df       	rcall	.-110    	; 0xd2 <spi_write>
+ 140:	81 e0       	ldi	r24, 0x01	; 1
+ 142:	c7 df       	rcall	.-114    	; 0xd2 <spi_write>
+ 144:	80 e0       	ldi	r24, 0x00	; 0
+ 146:	d5 cf       	rjmp	.-86     	; 0xf2 <spi_slaveDeSelect>
+ 148:	08 95       	ret
+
+0000014a <main>:
 }
 
-int main(void) {
-	DDRF = 0x00;				
-  c6:	10 92 61 00 	sts	0x0061, r1	; 0x800061 <__TEXT_REGION_LENGTH__+0x7e0061>
-	DDRA = 0xFF;				
-  ca:	8f ef       	ldi	r24, 0xFF	; 255
-  cc:	8a bb       	out	0x1a, r24	; 26
-	DDRB = 0xFF;				
-  ce:	87 bb       	out	0x17, r24	; 23
-	adcInit();					
-  d0:	f5 df       	rcall	.-22     	; 0xbc <adcInit>
+int main()
+{
+ 14a:	cf 93       	push	r28
+	DDRB=0x01; // Set PB0 pin as output for display select
+ 14c:	81 e0       	ldi	r24, 0x01	; 1
+ 14e:	87 bb       	out	0x17, r24	; 23
+	spi_masterInit(); // Initialize spi module
+ 150:	b5 df       	rcall	.-150    	; 0xbc <spi_masterInit>
+	displayDriverInit(); // Initialize display chip
+ 152:	da df       	rcall	.-76     	; 0x108 <displayDriverInit>
+ 154:	c1 e0       	ldi	r28, 0x01	; 1
 	
-    while (1)  {
-		ADCSRA |= (1 << 6);				
-  d2:	86 b1       	in	r24, 0x06	; 6
-  d4:	80 64       	ori	r24, 0x40	; 64
-  d6:	86 b9       	out	0x06, r24	; 6
-		while ( ADCSRA & (1 << 6) ) ;					
-  d8:	36 99       	sbic	0x06, 6	; 6
-  da:	fe cf       	rjmp	.-4      	; 0xd8 <main+0x12>
-		PORTA = ADCH;
-  dc:	85 b1       	in	r24, 0x05	; 5
-  de:	8b bb       	out	0x1b, r24	; 27
-		wait(100);				
-  e0:	84 e6       	ldi	r24, 0x64	; 100
-  e2:	90 e0       	ldi	r25, 0x00	; 0
-  e4:	dc df       	rcall	.-72     	; 0x9e <wait>
-    }
-  e6:	f5 cf       	rjmp	.-22     	; 0xd2 <main+0xc>
+	// clear display (all zero's)
+	for (char i =1; i<=2; i++)
+ 156:	09 c0       	rjmp	.+18     	; 0x16a <main+0x20>
+	{
+		spi_slaveSelect(0); // Select display chip
+ 158:	80 e0       	ldi	r24, 0x00	; 0
+ 15a:	bf df       	rcall	.-130    	; 0xda <spi_slaveSelect>
+		spi_write(i); // digit adress: (digit place)
+ 15c:	8c 2f       	mov	r24, r28
+ 15e:	b9 df       	rcall	.-142    	; 0xd2 <spi_write>
+		spi_write(0); // digit value: 0
+ 160:	80 e0       	ldi	r24, 0x00	; 0
+ 162:	b7 df       	rcall	.-146    	; 0xd2 <spi_write>
+ 164:	80 e0       	ldi	r24, 0x00	; 0
+		spi_slaveDeSelect(0); // Deselect display chip
+ 166:	c5 df       	rcall	.-118    	; 0xf2 <spi_slaveDeSelect>
+ 168:	cf 5f       	subi	r28, 0xFF	; 255
+	DDRB=0x01; // Set PB0 pin as output for display select
+	spi_masterInit(); // Initialize spi module
+	displayDriverInit(); // Initialize display chip
+	
+	// clear display (all zero's)
+	for (char i =1; i<=2; i++)
+ 16a:	c3 30       	cpi	r28, 0x03	; 3
+ 16c:	a8 f3       	brcs	.-22     	; 0x158 <main+0xe>
+ 16e:	88 ee       	ldi	r24, 0xE8	; 232
+		spi_write(i); // digit adress: (digit place)
+		spi_write(0); // digit value: 0
+		spi_slaveDeSelect(0); // Deselect display chip
+	}
+	
+	wait(1000);
+ 170:	93 e0       	ldi	r25, 0x03	; 3
+ 172:	95 df       	rcall	.-214    	; 0x9e <wait>
+	
+	// write 4-digit data
+	for (char i =1; i<=2; i++)
+ 174:	c1 e0       	ldi	r28, 0x01	; 1
+	{
+		spi_slaveSelect(0); // Select display chip
+ 176:	0c c0       	rjmp	.+24     	; 0x190 <main+0x46>
+ 178:	80 e0       	ldi	r24, 0x00	; 0
+		spi_write(i); // digit adress: (digit place)
+ 17a:	af df       	rcall	.-162    	; 0xda <spi_slaveSelect>
+ 17c:	8c 2f       	mov	r24, r28
+		spi_write(i); // digit value: i (= digit place)
+ 17e:	a9 df       	rcall	.-174    	; 0xd2 <spi_write>
+ 180:	8c 2f       	mov	r24, r28
+ 182:	a7 df       	rcall	.-178    	; 0xd2 <spi_write>
+		spi_slaveDeSelect(0); // Deselect display chip
+ 184:	80 e0       	ldi	r24, 0x00	; 0
+ 186:	b5 df       	rcall	.-150    	; 0xf2 <spi_slaveDeSelect>
+		wait(1000);
+ 188:	88 ee       	ldi	r24, 0xE8	; 232
+ 18a:	93 e0       	ldi	r25, 0x03	; 3
+ 18c:	88 df       	rcall	.-240    	; 0x9e <wait>
+ 18e:	cf 5f       	subi	r28, 0xFF	; 255
+	}
+	
+	wait(1000);
+	
+	// write 4-digit data
+	for (char i =1; i<=2; i++)
+ 190:	c3 30       	cpi	r28, 0x03	; 3
+ 192:	90 f3       	brcs	.-28     	; 0x178 <main+0x2e>
+ 194:	88 ee       	ldi	r24, 0xE8	; 232
+		spi_write(i); // digit value: i (= digit place)
+		spi_slaveDeSelect(0); // Deselect display chip
+		wait(1000);
+	}
+	
+	wait(1000);
+ 196:	93 e0       	ldi	r25, 0x03	; 3
+ 198:	82 df       	rcall	.-252    	; 0x9e <wait>
+ 19a:	81 e0       	ldi	r24, 0x01	; 1
+ 19c:	90 e0       	ldi	r25, 0x00	; 0
+	return (1);
+ 19e:	cf 91       	pop	r28
+ 1a0:	08 95       	ret
 
-000000e8 <_exit>:
-  e8:	f8 94       	cli
+000001a2 <_exit>:
+ 1a2:	f8 94       	cli
 
-000000ea <__stop_program>:
-  ea:	ff cf       	rjmp	.-2      	; 0xea <__stop_program>
+000001a4 <__stop_program>:
+ 1a4:	ff cf       	rjmp	.-2      	; 0x1a4 <__stop_program>
