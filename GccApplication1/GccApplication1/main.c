@@ -107,10 +107,12 @@ void spi_writeWord ( unsigned char adress, unsigned char data )
 
 void writeLedDisplay( int value )
 {
-	if (value > 9999) { return; }
+	if (value > 9999 || value < -999) { return; }
 		
 	char *valueString = calloc(4, sizeof(char));
 	sprintf(valueString, "%d", value);
+	
+	if(value < 0) { valueString[0] = 10; }
 	
 	for (int i = 4; i > 0; i--)
 	{
@@ -133,7 +135,7 @@ int main()
 	
 	wait(1000);
 	
-	writeLedDisplay(9876);
+	writeLedDisplay(-876);
 	
 	wait(1000);
 	return (1);
