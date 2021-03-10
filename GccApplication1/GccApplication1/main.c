@@ -5,6 +5,7 @@
 #include <avr/interrupt.h>
 
 
+// Build in led Arduino on PB7 (pin 13)
 void wait( int ms ) {
 	for (int i=0; i<ms; i++) {
 		_delay_ms( 1 );		// library function (max 30 ms at 8MHz)
@@ -13,23 +14,21 @@ void wait( int ms ) {
 
 void adcInit( void )
 {
-	ADMUX = 0b01100000;			
-	ADCSRA = 0b11100110;		
+	ADMUX = 0b11100011;
+	ADCSRA = 0b10000110;
 }
 
-
-// Main program: ADC at PF1
-int main( void )
-{
+int main(void) {
 	DDRF = 0x00;
 	DDRA = 0xFF;
 	DDRB = 0xFF;
 	adcInit();
-
-	while (1)
-	{
-		PORTB = ADCL;			
+	
+	while (1)  {
+		ADCSRA |= (1 << 6);
+		while ( ADCSRA & (1 << 6) ) ;
 		PORTA = ADCH;
-		wait(100);				
+		wait(100);
 	}
+	return 0;
 }
