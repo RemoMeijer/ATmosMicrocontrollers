@@ -45,13 +45,13 @@ char spi_writeRead( unsigned char data )
 
 // Select device on pinnumer PORTB
 void spi_slaveSelect(unsigned char chipNumber)
-{	
+{
 	PORTB &= ~BIT(chipNumber);
 }
 
 // Deselect device on pinnumer PORTB
 void spi_slaveDeSelect(unsigned char chipNumber)
-{	
+{
 	PORTB |= BIT(chipNumber);
 }
 
@@ -59,40 +59,50 @@ void spi_slaveDeSelect(unsigned char chipNumber)
 void displayDriverInit()
 {
 	spi_slaveSelect(0); // Select display chip (MAX7219)
-	 spi_write(0x09); // Register 09: Decode Mode
-	 spi_write(0xFF); // -> 1's = BCD mode for all digits
-	 spi_slaveDeSelect(0); // Deselect display chip
-	 spi_slaveSelect(0); // Select dispaly chip
-	 spi_write(0x0A); // Register 0A: Intensity
-	 spi_write(0x0F); // -> Level F (in range [1..F])
-	 spi_slaveDeSelect(0); // Deselect display chip
-	 spi_slaveSelect(0); // Select display chip
-	 spi_write(0x0B); // Register 0B: Scan-limit
-	 spi_write(0x3); // -> 1 = Display digits 0..4
-	 spi_slaveDeSelect(0); // Deselect display chip
-	 spi_slaveSelect(0); // Select display chip
-	 spi_write(0x0C); // Register 0B: Shutdown register
-	 spi_write(0x01); // -> 1 = Normal operation
-	 spi_slaveDeSelect(0); // Deselect display chip
+	spi_write(0x09); // Register 09: Decode Mode
+	spi_write(0xFF); // -> 1's = BCD mode for all digits
+	spi_slaveDeSelect(0); // Deselect display chip
+	spi_slaveSelect(0); // Select dispaly chip
+	spi_write(0x0A); // Register 0A: Intensity
+	spi_write(0x0F); // -> Level F (in range [1..F])
+	spi_slaveDeSelect(0); // Deselect display chip
+	spi_slaveSelect(0); // Select display chip
+	spi_write(0x0B); // Register 0B: Scan-limit
+	spi_write(0x3); // -> 1 = Display digits 0..4
+	spi_slaveDeSelect(0); // Deselect display chip
+	spi_slaveSelect(0); // Select display chip
+	spi_write(0x0C); // Register 0B: Shutdown register
+	spi_write(0x01); // -> 1 = Normal operation
+	spi_slaveDeSelect(0); // Deselect display chip
 }
 
 // Set display on ('normal operation')
 void displayOn()
 {
-	 spi_slaveSelect(0); // Select display chip
-	 spi_write(0x0C); // Register 0B: Shutdown register
-	 spi_write(0x01); // -> 1 = Normal operation
-	 spi_slaveDeSelect(0); // Deselect display chip
+	spi_slaveSelect(0); // Select display chip
+	spi_write(0x0C); // Register 0B: Shutdown register
+	spi_write(0x01); // -> 1 = Normal operation
+	spi_slaveDeSelect(0); // Deselect display chip
 }
 
 // Set display off ('shut down')
 void displayOff()
 {
-	 spi_slaveSelect(0); // Select display chip
-	 spi_write(0x0C); // Register 0B: Shutdown register
-	 spi_write(0x00); // -> 1 = Normal operation
-	 spi_slaveDeSelect(0); // Deselect display chip
+	spi_slaveSelect(0); // Select display chip
+	spi_write(0x0C); // Register 0B: Shutdown register
+	spi_write(0x00); // -> 1 = Normal operation
+	spi_slaveDeSelect(0); // Deselect display chip
 }
+
+// Write a word = address byte + data byte from master to slave
+void spi_writeWord ( unsigned char adress, unsigned char data )
+{
+	spi_slaveSelect(0); // Select display chip
+	spi_write(adress); // digit adress: (digit place)
+	spi_write(data); // digit value: 0
+	spi_slaveDeSelect(0); // Deselect display chip
+}
+
 
 int main()
 {
@@ -103,10 +113,7 @@ int main()
 	// clear display (all zero's)
 	for (char i =1; i<=4; i++)
 	{
-		spi_slaveSelect(0); // Select display chip
-		spi_write(i); // digit adress: (digit place)
-		spi_write(0); // digit value: 0
-		spi_slaveDeSelect(0); // Deselect display chip
+		spi_writeWord(i,0);
 	}
 	
 	wait(1000);
@@ -114,10 +121,7 @@ int main()
 	// write 4-digit data
 	for (char i =1; i<=4; i++)
 	{
-		spi_slaveSelect(0); // Select display chip
-		spi_write(i); // digit adress: (digit place)
-		spi_write(i); // digit value: i (= digit place)
-		spi_slaveDeSelect(0); // Deselect display chip
+		spi_writeWord(i,i);
 		wait(1000);
 	}
 	
