@@ -3,29 +3,29 @@ GccApplication1.elf:     file format elf32-avr
 
 Sections:
 Idx Name          Size      VMA       LMA       File off  Algn
-  0 .data         00000000  00800100  00800100  00000120  2**0
+  0 .data         00000000  00800100  00800100  0000015e  2**0
                   CONTENTS, ALLOC, LOAD, DATA
-  1 .text         000000cc  00000000  00000000  00000054  2**1
+  1 .text         0000010a  00000000  00000000  00000054  2**1
                   CONTENTS, ALLOC, LOAD, READONLY, CODE
-  2 .comment      00000030  00000000  00000000  00000120  2**0
+  2 .comment      00000030  00000000  00000000  0000015e  2**0
                   CONTENTS, READONLY
-  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  00000150  2**2
+  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  00000190  2**2
                   CONTENTS, READONLY
-  4 .debug_aranges 00000028  00000000  00000000  0000018c  2**0
+  4 .debug_aranges 00000040  00000000  00000000  000001cc  2**0
                   CONTENTS, READONLY, DEBUGGING
-  5 .debug_info   000008e8  00000000  00000000  000001b4  2**0
+  5 .debug_info   0000098b  00000000  00000000  0000020c  2**0
                   CONTENTS, READONLY, DEBUGGING
-  6 .debug_abbrev 00000821  00000000  00000000  00000a9c  2**0
+  6 .debug_abbrev 00000878  00000000  00000000  00000b97  2**0
                   CONTENTS, READONLY, DEBUGGING
-  7 .debug_line   000002b5  00000000  00000000  000012bd  2**0
+  7 .debug_line   00000351  00000000  00000000  0000140f  2**0
                   CONTENTS, READONLY, DEBUGGING
-  8 .debug_frame  00000034  00000000  00000000  00001574  2**2
+  8 .debug_frame  00000064  00000000  00000000  00001760  2**2
                   CONTENTS, READONLY, DEBUGGING
-  9 .debug_str    00000432  00000000  00000000  000015a8  2**0
+  9 .debug_str    0000045b  00000000  00000000  000017c4  2**0
                   CONTENTS, READONLY, DEBUGGING
- 10 .debug_loc    0000006a  00000000  00000000  000019da  2**0
+ 10 .debug_loc    00000090  00000000  00000000  00001c1f  2**0
                   CONTENTS, READONLY, DEBUGGING
- 11 .debug_ranges 00000018  00000000  00000000  00001a44  2**0
+ 11 .debug_ranges 00000030  00000000  00000000  00001caf  2**0
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -109,60 +109,121 @@ Disassembly of section .text:
   92:	d0 e1       	ldi	r29, 0x10	; 16
   94:	de bf       	out	0x3e, r29	; 62
   96:	cd bf       	out	0x3d, r28	; 61
-  98:	11 d0       	rcall	.+34     	; 0xbc <main>
-  9a:	16 c0       	rjmp	.+44     	; 0xc8 <_exit>
+  98:	21 d0       	rcall	.+66     	; 0xdc <main>
+  9a:	35 c0       	rjmp	.+106    	; 0x106 <_exit>
 
 0000009c <__bad_interrupt>:
   9c:	b1 cf       	rjmp	.-158    	; 0x0 <__vectors>
 
-0000009e <wait>:
+0000009e <adcInit>:
+
 #define F_CPU 8e6
 
-// wait(): busy waiting for 'ms' millisecond - used library: util/delay.h
+void adcInit( void )
+{
+	ADMUX = 0b01100001;
+  9e:	81 e6       	ldi	r24, 0x61	; 97
+  a0:	87 b9       	out	0x07, r24	; 7
+	ADCSRA = 0b10000110;
+  a2:	86 e8       	ldi	r24, 0x86	; 134
+  a4:	86 b9       	out	0x06, r24	; 6
+  a6:	08 95       	ret
+
+000000a8 <changeADCChannel>:
+}
+
+void changeADCChannel(int channel){
+	ADMUX = 0x60 | channel;
+  a8:	80 66       	ori	r24, 0x60	; 96
+  aa:	87 b9       	out	0x07, r24	; 7
+  ac:	08 95       	ret
+
+000000ae <readADC>:
+}
+
+int readADC(){
+	ADCSRA |= (1 << 6);
+  ae:	86 b1       	in	r24, 0x06	; 6
+  b0:	80 64       	ori	r24, 0x40	; 64
+  b2:	86 b9       	out	0x06, r24	; 6
+	while ( ADCSRA & (1 << 6) );
+  b4:	36 99       	sbic	0x06, 6	; 6
+  b6:	fe cf       	rjmp	.-4      	; 0xb4 <readADC+0x6>
+	return ADCH;
+  b8:	85 b1       	in	r24, 0x05	; 5
+}
+  ba:	90 e0       	ldi	r25, 0x00	; 0
+  bc:	08 95       	ret
+
+000000be <wait>:
+
 void wait(int ms)
 {
 	for (int i=0; i<ms; i++)
-  9e:	20 e0       	ldi	r18, 0x00	; 0
-  a0:	30 e0       	ldi	r19, 0x00	; 0
-  a2:	08 c0       	rjmp	.+16     	; 0xb4 <wait+0x16>
+  be:	20 e0       	ldi	r18, 0x00	; 0
+  c0:	30 e0       	ldi	r19, 0x00	; 0
+  c2:	08 c0       	rjmp	.+16     	; 0xd4 <wait+0x16>
 	#else
 		//round up by default
 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
 	#endif
 
 	__builtin_avr_delay_cycles(__ticks_dc);
-  a4:	ef ec       	ldi	r30, 0xCF	; 207
-  a6:	f7 e0       	ldi	r31, 0x07	; 7
-  a8:	31 97       	sbiw	r30, 0x01	; 1
-  aa:	f1 f7       	brne	.-4      	; 0xa8 <wait+0xa>
-  ac:	00 c0       	rjmp	.+0      	; 0xae <wait+0x10>
-  ae:	00 00       	nop
-  b0:	2f 5f       	subi	r18, 0xFF	; 255
-  b2:	3f 4f       	sbci	r19, 0xFF	; 255
-  b4:	28 17       	cp	r18, r24
-  b6:	39 07       	cpc	r19, r25
-  b8:	ac f3       	brlt	.-22     	; 0xa4 <wait+0x6>
+  c4:	ef ec       	ldi	r30, 0xCF	; 207
+  c6:	f7 e0       	ldi	r31, 0x07	; 7
+  c8:	31 97       	sbiw	r30, 0x01	; 1
+  ca:	f1 f7       	brne	.-4      	; 0xc8 <wait+0xa>
+  cc:	00 c0       	rjmp	.+0      	; 0xce <wait+0x10>
+  ce:	00 00       	nop
+  d0:	2f 5f       	subi	r18, 0xFF	; 255
+  d2:	3f 4f       	sbci	r19, 0xFF	; 255
+  d4:	28 17       	cp	r18, r24
+  d6:	39 07       	cpc	r19, r25
+  d8:	ac f3       	brlt	.-22     	; 0xc4 <wait+0x6>
 	_delay_ms(1);
 }
-  ba:	08 95       	ret
+  da:	08 95       	ret
 
-000000bc <main>:
+000000dc <main>:
 
 int main()
-{
-	DDRA=0xFF; // Set PB0 pin as output for display select
-  bc:	8f ef       	ldi	r24, 0xFF	; 255
-  be:	8a bb       	out	0x1a, r24	; 26
+{	
+	DDRF = 0x00;
+  dc:	10 92 61 00 	sts	0x0061, r1	; 0x800061 <__TEXT_REGION_LENGTH__+0x7e0061>
+	DDRA = 0xFF;
+  e0:	8f ef       	ldi	r24, 0xFF	; 255
+  e2:	8a bb       	out	0x1a, r24	; 26
+	DDRD = 0xFF;
+  e4:	81 bb       	out	0x11, r24	; 17
+	DDRE = 0xFF;
+  e6:	82 b9       	out	0x02, r24	; 2
 	
+	adcInit();
+  e8:	da df       	rcall	.-76     	; 0x9e <adcInit>
+
 	while(1){
-		wait(1000);
-  c0:	88 ee       	ldi	r24, 0xE8	; 232
-  c2:	93 e0       	ldi	r25, 0x03	; 3
-  c4:	ec df       	rcall	.-40     	; 0x9e <wait>
-  c6:	fc cf       	rjmp	.-8      	; 0xc0 <main+0x4>
+		changeADCChannel(0);
+  ea:	80 e0       	ldi	r24, 0x00	; 0
+  ec:	90 e0       	ldi	r25, 0x00	; 0
+		PORTD = readADC();
+  ee:	dc df       	rcall	.-72     	; 0xa8 <changeADCChannel>
+  f0:	de df       	rcall	.-68     	; 0xae <readADC>
+		changeADCChannel(1);
+  f2:	82 bb       	out	0x12, r24	; 18
+  f4:	81 e0       	ldi	r24, 0x01	; 1
+  f6:	90 e0       	ldi	r25, 0x00	; 0
+		PORTE = readADC();
+  f8:	d7 df       	rcall	.-82     	; 0xa8 <changeADCChannel>
+  fa:	d9 df       	rcall	.-78     	; 0xae <readADC>
+		wait(100);
+  fc:	83 b9       	out	0x03, r24	; 3
+  fe:	84 e6       	ldi	r24, 0x64	; 100
+ 100:	90 e0       	ldi	r25, 0x00	; 0
+ 102:	dd df       	rcall	.-70     	; 0xbe <wait>
+ 104:	f2 cf       	rjmp	.-28     	; 0xea <main+0xe>
 
-000000c8 <_exit>:
-  c8:	f8 94       	cli
+00000106 <_exit>:
+ 106:	f8 94       	cli
 
-000000ca <__stop_program>:
-  ca:	ff cf       	rjmp	.-2      	; 0xca <__stop_program>
+00000108 <__stop_program>:
+ 108:	ff cf       	rjmp	.-2      	; 0x108 <__stop_program>
