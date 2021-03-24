@@ -1,3 +1,5 @@
+#define F_CPU 16e6
+
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
 #include <avr/interrupt.h>
@@ -5,7 +7,6 @@
 #include <util/delay.h>
 #include <stdlib.h>
 
-#define F_CPU 8e6
 
 int outpitch = 0;
 int wavenum = 0;
@@ -17,7 +18,7 @@ int lfoval = 0;
 
 static uint16_t waveforms[4] =
 {
-	0b1100000000000000,
+	0b1111011111011110,
 	0b1111111100000000,
 	0b1010101010101010,
 	0b0000000000000000
@@ -48,27 +49,35 @@ void wait(int ms)
 ISR(TIMER1_COMPA_vect)
 {
 	// take first bit
-	int shiftout = waveform & 1;
+	uint8_t shiftout;
+	shiftout = waveform & (1<<0);
 	// move waveform 1 place to the right
 	waveform >>= 1;
-	
+		
 	// if we removed a 1 with the bit shift put a 1 to the end of the waveform
 	// else do nothing and let it stay 0
+	waveform &= ~(1 << 15);
 	if(shiftout)
 		waveform |= (1 << 15);
+
+	PORTA = waveform;
+	PORTB = waveform >> 8;
 	
 	//shiftout &= envval;
 	
 	if(shiftout)
-		PORTE |= (1 << 2);
+		DDRF = 0x0;
+		//PORTE |= (1 << 2);
 	else
-		PORTE &= ~(1 << 2);
-	}
+		DDRF = 0x1;
+		//PORTE &= ~(1 << 2);
+	
+}
 
 // set new pitch
 void update_pitch()
 {
-	uint16_t newpitch = 200U + ((pitch-lfoval)*4U);
+	uint16_t newpitch = 1U + (floor((pitch-lfoval)*1U)/10);
 	
 	if (newpitch != outpitch)
 	{
@@ -79,32 +88,51 @@ void update_pitch()
 	}
 }
 
+void setupTimer(){
+	OCR1A = 500;
+	TIMSK |= (1 << 4);
+	sei();
+	TCCR1A = 0b0;
+	TCCR1B = 0b1100;
+	
+}
+
 int main()
 {	
-	DDRF = 0x00;
+	DDRF = 0x01;
 	DDRA = 0xFF;
-	DDRD = 0xFF;
-	DDRE = 0xFF;
-	
+	DDRB = 0xFF;
+	DDRD = 0x0;
+	//DDRD = 0xFF;
+	DDRE = 0b01000110;
+	DDRG = 0x00;
 	adcInit();
-	
-	sei();
-	
-	TCCR1B |= _BV(WGM12);  // enable CTC
-	TIMSK |= _BV(OCIE1A); // enable CTC interrupt
-	
-	wavenum = 3;
+	int pressed = 0;
+	wavenum = 2;
 	waveform = waveforms[wavenum];
 	
-	TCCR1B |= _BV(CS11); // set prescaler to 8; starts oscillator
+	setupTimer();
 	
 	while(1){
-		changeADCChannel(0);
-		PORTA = readADC();
+		//changeADCChannel(0);
+		//PORTA = readADC();
 		changeADCChannel(1);
-		PORTD = readADC();
+		pitch = readADC();
 		
-		//update_pitch();
+		update_pitch();
+		
+		if(PINE & 0x80){
+			if(pressed == 0){
+				//PORTE ^= (1<<6);
+				wavenum++;
+				wavenum = wavenum > 3? 0 : wavenum;
+				wavenum = wavenum < 0? 3 : wavenum;
+				waveform = waveforms[wavenum];
+				pressed = 1;
+			}
+		} else { 
+			pressed = 0;
+		}
 		
 		wait(100);
 	}
