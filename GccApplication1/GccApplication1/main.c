@@ -7,24 +7,32 @@
 #include <util/delay.h>
 #include <stdlib.h>
 
-#define NUM_WAVEFORMS 6
+#define NUM_WAVEFORMS 8
 
 int outpitch = 0;
 int wavenum = 0;
 int envval = 1;
-int waveform;
+uint32_t waveform;
 
 int pitch = 400;
-int lfoval = 0;
 
-static uint16_t waveforms[NUM_WAVEFORMS] =
+uint16_t lfofreq = 0;   // lfo period
+uint16_t lfodepth = 0;  // lfo wave amplitude
+uint8_t lfowavenum = 0; // lfo waveform
+uint8_t lfotimer = 0;   // lfo value, counts from 0 to lfofreq
+uint16_t lfoval = 0;    // amount to add to output pitch
+uint16_t lfodelta = 0;
+
+static uint32_t waveforms[NUM_WAVEFORMS] =
 {
-	0b1010101010101010,
-	0b1111111100000000,
-	0b0010100001110110,
-	0b1111011111011110,
-	0b0000000000000000, // random noise
-	0b0000000000000000
+	0b10101010101010101010101010101010,
+	0b11101001000100010000100000100000,
+	0b00000100000100001000100010010111,
+	0b11111111000000001111111100000000,
+	0b00101000011101100010100001110110,
+	0b11110111110111101111011111011110,
+	0b00000000000000000000000000000000, // random noise
+	0b00000000000000000000000000000000
 };
 
 void adcInit( void )
@@ -54,6 +62,16 @@ void changeWaveform(){
 	wavenum = wavenum > NUM_WAVEFORMS - 1? 0 : wavenum;
 	wavenum = wavenum < 0? NUM_WAVEFORMS - 1 : wavenum;
 	waveform = waveforms[wavenum];
+	
+	PORTA = wavenum;
+}
+
+void changelfoWaveform(){
+	lfowavenum++;
+	lfowavenum = lfowavenum > 7? 0 : lfowavenum;
+	lfowavenum = lfowavenum < 0? 7 : lfowavenum;
+	
+	PORTB = lfowavenum;
 }
 
 // faster noise generator than rand()
@@ -79,12 +97,14 @@ ISR(TIMER1_COMPA_vect)
 	
 	// if we removed a 1 with the bit shift put a 1 to the end of the waveform
 	// else do nothing and let it stay 0
-	waveform &= ~(1 << 15);
-	if(shiftout)
-		waveform |= (1 << 15);
+	waveform &= ~(0b10000000000000000000000000000000);
+	if(shiftout){
+		//waveform |= (1 << 31);
+			waveform |= 0b10000000000000000000000000000000;
+	}
 
-	PORTA = waveform;
-	PORTB = waveform >> 8;
+	//PORTA = waveform;
+	//PORTB = waveform >> 8;
 	
 	//shiftout &= envval;
 	
@@ -119,39 +139,108 @@ void setupTimer(){
 	TCCR1B = 0b1010;
 }
 
+void update_lfo()
+{
+	switch (lfowavenum)
+	{
+		case 0: // triangle
+		lfoval = (lfotimer*lfodelta) >> 8;
+		if (lfotimer >= lfofreq/2)
+			lfoval = lfodepth - lfoval;
+		break;
+		case 1: // sawtooth up
+		lfoval = (lfotimer*lfodelta) >> 8;
+		break;
+		case 2: // sawtooth down
+		lfoval = lfodepth - ((lfotimer*lfodelta) >> 8);
+		break;
+		case 3: // square
+		lfoval = (lfotimer >= lfofreq/2) ? lfodepth : 0;
+		break;
+		case 4: // half square
+		lfoval = (lfotimer < lfofreq/4) ? lfodepth : 0;
+		break;
+		case 5: // half sawtooth up
+		if (lfotimer < lfofreq/2)
+			lfoval = (lfotimer*lfodelta) >> 7;
+		else
+			lfoval = 0;
+		break;
+		case 6: // half sawtooth down
+		if (lfotimer < lfofreq/2)
+			lfoval = lfodepth - ((lfotimer*lfodelta) >> 7);
+		else
+		lfoval = 0;
+		break;
+		case 7: // random
+		if (lfotimer == 0)
+			lfoval = noise() % lfodepth;
+		break;
+	}
+
+	if (lfotimer < lfofreq/2)
+		PORTD |= 1;
+	else
+		PORTD &= ~(1);
+
+	lfotimer++;
+	if (lfotimer >= lfofreq)
+		lfotimer = 0;
+}
+
+void update_synth_params(){
+	changeADCChannel(1);
+	pitch = readADC();
+	changeADCChannel(2);
+	lfodepth = readADC() >> 2;
+	changeADCChannel(3);
+	lfofreq = readADC() >> 2;
+	lfodelta = (lfofreq) ? (lfodepth*256U) / lfofreq : 0;
+}
+
 int main()
 {	
 	DDRF = 0x01;
 	DDRA = 0xFF;
 	DDRB = 0xFF;
-	DDRD = 0x0;
-	DDRE = 0b01000110;
+	DDRD = 0x80;
+	DDRE = 0b0000110;
 	DDRG = 0x00;
 	adcInit();
-	int pressed = 0;
+	int pressedE7 = 0;
+	int pressedE6 = 0;
 	wavenum = 0;
+	lfowavenum = 0;
 	waveform = waveforms[wavenum];
 	
 	setupTimer();
 	
 	while(1){
-		//changeADCChannel(0);
-		//PORTA = readADC();
-		changeADCChannel(1);
-		pitch = readADC();
+		update_synth_params();
 		
 		update_pitch();
+		update_lfo();
 		
 		if(PINE & 0x80){
-			if(pressed == 0){
+			if(pressedE7 == 0){
 				changeWaveform();
-				pressed = 1;
+				pressedE7 = 1;
 			}
 		} else { 
-			pressed = 0;
+			pressedE7 = 0;
 		}
 		
-		wait(100);
+		if(PINE & 0x40){
+			if(pressedE6 == 0){
+				changelfoWaveform();
+				pressedE6 = 1;
+			}
+		} else {
+			pressedE6 = 0;
+		}
+		
+		//wait(100);
+		_delay_us(100);
 	}
 	return (1);
 }
