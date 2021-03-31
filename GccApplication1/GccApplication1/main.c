@@ -109,11 +109,11 @@ ISR(TIMER1_COMPA_vect)
 	//shiftout &= envval;
 	
 	if(shiftout)
-		DDRF = 0x0;
-		//PORTE |= (1 << 2);
+		PORTE |= (1 << 2);
+		//DDRF = 0x0;
 	else
-		DDRF = 0x1;
-		//PORTE &= ~(1 << 2);
+		PORTE &= ~(1 << 2);
+		//DDRF = 0x1;
 	
 }
 
@@ -200,11 +200,11 @@ void update_synth_params(){
 
 int main()
 {	
-	DDRF = 0x01;
+	DDRF = 0x111;
 	DDRA = 0xFF;
 	DDRB = 0xFF;
 	DDRD = 0x80;
-	DDRE = 0b0000110;
+	DDRE = 0b00000111;
 	DDRG = 0x00;
 	adcInit();
 	int pressedE7 = 0;
