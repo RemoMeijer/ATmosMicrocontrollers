@@ -1,4 +1,4 @@
-#define F_CPU 16e6
+#define F_CPU 8e6
 
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
@@ -16,11 +16,11 @@ uint32_t waveform;
 
 int pitch = 400;
 
-uint16_t lfofreq = 0;   // lfo period
-uint16_t lfodepth = 0;  // lfo wave amplitude
-uint8_t lfowavenum = 0; // lfo waveform
-uint8_t lfotimer = 0;   // lfo value, counts from 0 to lfofreq
-uint16_t lfoval = 0;    // amount to add to output pitch
+uint16_t lfofreq = 0; 
+uint16_t lfodepth = 0; 
+uint8_t lfowavenum = 0;
+uint8_t lfotimer = 0;  
+uint16_t lfoval = 0;   
 uint16_t lfodelta = 0;
 
 static uint32_t waveforms[NUM_WAVEFORMS] =
@@ -99,22 +99,14 @@ ISR(TIMER1_COMPA_vect)
 	// else do nothing and let it stay 0
 	waveform &= ~(0b10000000000000000000000000000000);
 	if(shiftout){
-		//waveform |= (1 << 31);
-			waveform |= 0b10000000000000000000000000000000;
+		waveform |= 0b10000000000000000000000000000000;
 	}
 
-	//PORTA = waveform;
-	//PORTB = waveform >> 8;
-	
-	//shiftout &= envval;
 	
 	if(shiftout)
 		PORTE |= (1 << 2);
-		//DDRF = 0x0;
 	else
-		PORTE &= ~(1 << 2);
-		//DDRF = 0x1;
-	
+		PORTE &= ~(1 << 2);	
 }
 
 // set new pitch
@@ -238,8 +230,7 @@ int main()
 		} else {
 			pressedE6 = 0;
 		}
-		
-		//wait(100);
+				
 		_delay_us(100);
 	}
 	return (1);

@@ -338,17 +338,14 @@ ISR(TIMER1_COMPA_vect)
 	if(shiftout){
  20a:	88 23       	and	r24, r24
  20c:	49 f0       	breq	.+18     	; 0x220 <__vector_12+0x9c>
-		//waveform |= (1 << 31);
-			waveform |= 0b10000000000000000000000000000000;
+		waveform |= 0b10000000000000000000000000000000;
  20e:	70 68       	ori	r23, 0x80	; 128
  210:	40 93 32 01 	sts	0x0132, r20	; 0x800132 <waveform>
  214:	50 93 33 01 	sts	0x0133, r21	; 0x800133 <waveform+0x1>
  218:	60 93 34 01 	sts	0x0134, r22	; 0x800134 <waveform+0x2>
  21c:	70 93 35 01 	sts	0x0135, r23	; 0x800135 <waveform+0x3>
-	//PORTA = waveform;
-	//PORTB = waveform >> 8;
-	
-	//shiftout &= envval;
+	}
+
 	
 	if(shiftout)
  220:	88 23       	and	r24, r24
@@ -358,14 +355,11 @@ ISR(TIMER1_COMPA_vect)
  226:	84 60       	ori	r24, 0x04	; 4
  228:	83 b9       	out	0x03, r24	; 3
  22a:	03 c0       	rjmp	.+6      	; 0x232 <__vector_12+0xae>
-		//DDRF = 0x0;
 	else
-		PORTE &= ~(1 << 2);
+		PORTE &= ~(1 << 2);	
  22c:	83 b1       	in	r24, 0x03	; 3
  22e:	8b 7f       	andi	r24, 0xFB	; 251
  230:	83 b9       	out	0x03, r24	; 3
-		//DDRF = 0x1;
-	
 }
  232:	ff 91       	pop	r31
  234:	ef 91       	pop	r30
@@ -758,13 +752,13 @@ void update_synth_params(){
  53e:	08 95       	ret
 
 00000540 <main>:
- 540:	81 e0       	ldi	r24, 0x01	; 1
+ 540:	81 e1       	ldi	r24, 0x11	; 17
  542:	80 93 61 00 	sts	0x0061, r24	; 0x800061 <__TEXT_REGION_LENGTH__+0x7e0061>
 }
 
 int main()
 {	
-	DDRF = 0x01;
+	DDRF = 0x111;
 	DDRA = 0xFF;
  546:	8f ef       	ldi	r24, 0xFF	; 255
  548:	8a bb       	out	0x1a, r24	; 26
@@ -773,8 +767,8 @@ int main()
 	DDRD = 0x80;
  54c:	80 e8       	ldi	r24, 0x80	; 128
  54e:	81 bb       	out	0x11, r24	; 17
-	DDRE = 0b00000110;
- 550:	86 e0       	ldi	r24, 0x06	; 6
+	DDRE = 0b00000111;
+ 550:	87 e0       	ldi	r24, 0x07	; 7
  552:	82 b9       	out	0x02, r24	; 2
 	DDRG = 0x00;
  554:	10 92 64 00 	sts	0x0064, r1	; 0x800064 <__TEXT_REGION_LENGTH__+0x7e0064>
@@ -799,7 +793,7 @@ int main()
 	setupTimer();
  57c:	95 de       	rcall	.-726    	; 0x2a8 <setupTimer>
 	DDRD = 0x80;
-	DDRE = 0b00000110;
+	DDRE = 0b00000111;
 	DDRG = 0x00;
 	adcInit();
 	int pressedE7 = 0;
@@ -808,7 +802,7 @@ int main()
  580:	d0 e0       	ldi	r29, 0x00	; 0
 	DDRB = 0xFF;
 	DDRD = 0x80;
-	DDRE = 0b00000110;
+	DDRE = 0b00000111;
 	DDRG = 0x00;
 	adcInit();
 	int pressedE7 = 0;
@@ -864,14 +858,14 @@ int main()
 		} else {
 			pressedE6 = 0;
  5b4:	d0 e0       	ldi	r29, 0x00	; 0
- 5b6:	8f e8       	ldi	r24, 0x8F	; 143
+ 5b6:	87 ec       	ldi	r24, 0xC7	; 199
 	#else
 		//round up by default
 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
 	#endif
 
 	__builtin_avr_delay_cycles(__ticks_dc);
- 5b8:	91 e0       	ldi	r25, 0x01	; 1
+ 5b8:	90 e0       	ldi	r25, 0x00	; 0
  5ba:	01 97       	sbiw	r24, 0x01	; 1
  5bc:	f1 f7       	brne	.-4      	; 0x5ba <main+0x7a>
  5be:	00 c0       	rjmp	.+0      	; 0x5c0 <main+0x80>
