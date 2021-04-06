@@ -1,142 +1,237 @@
+#define F_CPU 8e6
+
 #include <avr/io.h>
+#include <avr/sfr_defs.h>
+#include <avr/interrupt.h>
+#include <avr/pgmspace.h>
 #include <util/delay.h>
 #include <stdlib.h>
-#include <stdio.h>
 
-#define F_CPU 8e6
-#define BIT(x) ( 1<<x )
-#define DDR_SPI DDRB // spi Data direction register
-#define PORT_SPI PORTB // spi Output register
-#define SPI_SCK 1 // PB1: spi Pin System Clock
-#define SPI_MOSI 2 // PB2: spi Pin MOSI
-#define SPI_MISO 3 // PB3: spi Pin MISO
-#define SPI_SS 0 // PB0: spi Pin Slave Select
+#define NUM_WAVEFORMS 8
 
-// wait(): busy waiting for 'ms' millisecond - used library: util/delay.h
+int outpitch = 0;
+int wavenum = 0;
+int envval = 1;
+uint32_t waveform;
+
+int pitch = 400;
+
+uint16_t lfofreq = 0; 
+uint16_t lfodepth = 0; 
+uint8_t lfowavenum = 0;
+uint8_t lfotimer = 0;  
+uint16_t lfoval = 0;   
+uint16_t lfodelta = 0;
+
+static uint32_t waveforms[NUM_WAVEFORMS] =
+{
+	0b10101010101010101010101010101010,
+	0b11101001000100010000100000100000,
+	0b00000100000100001000100010010111,
+	0b11111111000000001111111100000000,
+	0b00101000011101100010100001110110,
+	0b11110111110111101111011111011110,
+	0b00000000000000000000000000000000, // random noise
+	0b00000000000000000000000000000000
+};
+
+void adcInit( void )
+{
+	ADMUX = 0b01100001;
+	ADCSRA = 0b10000110;
+}
+
+void changeADCChannel(int channel){
+	ADMUX = 0x60 | channel;
+}
+
+int readADC(){
+	ADCSRA |= (1 << 6);
+	while ( ADCSRA & (1 << 6) );
+	return ADCH;
+}
+
 void wait(int ms)
 {
 	for (int i=0; i<ms; i++)
 	_delay_ms(1);
 }
 
-void spi_masterInit(void)
-{
-	DDR_SPI = 0xff; // All pins output: MOSI, SCK, SS, SS_display
-	DDR_SPI &= ~BIT(SPI_MISO); // except: MISO input
-	PORT_SPI |= BIT(SPI_SS); // SS_ADC == 1: deselect slave
-	SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR1); // or: SPCR = 0b11010010;
-	// Enable spi, MasterMode, Clock rate fck/64
-	// bitrate=125kHz, Mode = 0: CPOL=0, CPPH=0
-}
-
-// Write a byte from master to slave
-void spi_write( unsigned char data )
-{
-	SPDR = data; // Load byte --> starts transmission
-	while( !(SPSR & BIT(SPIF)) ); // Wait for transmission complete
-}
-
-// Write a byte from master to slave and read a byte from slave - not used here
-char spi_writeRead( unsigned char data )
-{
-	SPDR = data; // Load byte --> starts transmission
-	while( !(SPSR & BIT(SPIF)) ); // Wait for transmission complete
-	data = SPDR; // New received data (eventually, MISO) in SPDR
-	return data; // Return received byte
-}
-
-// Select device on pinnumer PORTB
-void spi_slaveSelect(unsigned char chipNumber)
-{
-	PORTB &= ~BIT(chipNumber);
-}
-
-// Deselect device on pinnumer PORTB
-void spi_slaveDeSelect(unsigned char chipNumber)
-{
-	PORTB |= BIT(chipNumber);
-}
-
-// Initialize the driver chip (type MAX 7219)
-void displayDriverInit()
-{
-	spi_slaveSelect(0); // Select display chip (MAX7219)
-	spi_write(0x09); // Register 09: Decode Mode
-	spi_write(0xFF); // -> 1's = BCD mode for all digits
-	spi_slaveDeSelect(0); // Deselect display chip
-	spi_slaveSelect(0); // Select dispaly chip
-	spi_write(0x0A); // Register 0A: Intensity
-	spi_write(0x0F); // -> Level F (in range [1..F])
-	spi_slaveDeSelect(0); // Deselect display chip
-	spi_slaveSelect(0); // Select display chip
-	spi_write(0x0B); // Register 0B: Scan-limit
-	spi_write(0x3); // -> 1 = Display digits 0..4
-	spi_slaveDeSelect(0); // Deselect display chip
-	spi_slaveSelect(0); // Select display chip
-	spi_write(0x0C); // Register 0B: Shutdown register
-	spi_write(0x01); // -> 1 = Normal operation
-	spi_slaveDeSelect(0); // Deselect display chip
-}
-
-// Set display on ('normal operation')
-void displayOn()
-{
-	spi_slaveSelect(0); // Select display chip
-	spi_write(0x0C); // Register 0B: Shutdown register
-	spi_write(0x01); // -> 1 = Normal operation
-	spi_slaveDeSelect(0); // Deselect display chip
-}
-
-// Set display off ('shut down')
-void displayOff()
-{
-	spi_slaveSelect(0); // Select display chip
-	spi_write(0x0C); // Register 0B: Shutdown register
-	spi_write(0x00); // -> 1 = Normal operation
-	spi_slaveDeSelect(0); // Deselect display chip
-}
-
-// Write a word = address byte + data byte from master to slave
-void spi_writeWord ( unsigned char adress, unsigned char data )
-{
-	spi_slaveSelect(0); // Select display chip
-	spi_write(adress); // digit adress: (digit place)
-	spi_write(data); // digit value: 0
-	spi_slaveDeSelect(0); // Deselect display chip
-}
-
-void writeLedDisplay( int value )
-{
-	if (value > 9999 || value < -999) { return; }
-		
-	char *valueString = calloc(4, sizeof(char));
-	sprintf(valueString, "%d", value);
+void changeWaveform(){
+	wavenum++;
+	wavenum = wavenum > NUM_WAVEFORMS - 1? 0 : wavenum;
+	wavenum = wavenum < 0? NUM_WAVEFORMS - 1 : wavenum;
+	waveform = waveforms[wavenum];
 	
-	if(value < 0) { valueString[0] = 10; }
+	PORTA = wavenum;
+}
+
+void changelfoWaveform(){
+	lfowavenum++;
+	lfowavenum = lfowavenum > 7? 0 : lfowavenum;
+	lfowavenum = lfowavenum < 0? 7 : lfowavenum;
 	
-	for (int i = 4; i > 0; i--)
-	{
-		spi_writeWord(i, valueString[4 - i]);
+	PORTB = lfowavenum;
+}
+
+// faster noise generator than rand()
+uint16_t noise()
+{
+	static uint16_t lfsr = 0xACE1u;
+	lfsr = (lfsr >> 1) ^ (-(lfsr & 1u) & 0xB400u);
+	return lfsr;
+}
+
+ISR(TIMER1_COMPA_vect)
+{
+	uint8_t shiftout;
+	
+	if(wavenum != NUM_WAVEFORMS - 2){
+		// take first bit
+		shiftout = waveform & (1<<0);
+		// move waveform 1 place to the right
+		waveform >>= 1;
+	} else {
+		shiftout = noise() & 1;
 	}
-	free(valueString);
+	
+	// if we removed a 1 with the bit shift put a 1 to the end of the waveform
+	// else do nothing and let it stay 0
+	waveform &= ~(0b10000000000000000000000000000000);
+	if(shiftout){
+		waveform |= 0b10000000000000000000000000000000;
+	}
+
+	
+	if(shiftout)
+		PORTE |= (1 << 2);
+	else
+		PORTE &= ~(1 << 2);	
+}
+
+// set new pitch
+void update_pitch()
+{
+	uint16_t newpitch = 200U + ((pitch-lfoval)*4U);
+	
+	if (newpitch != outpitch)
+	{
+		outpitch = newpitch;
+		if (TCNT1 > outpitch)
+		TCNT1 = 0;
+		OCR1A = outpitch;
+	}
+}
+
+void setupTimer(){
+	OCR1A = 500;
+	TIMSK |= (1 << 4);
+	sei();
+	TCCR1A = 0b0;
+	TCCR1B = 0b1010;
+}
+
+void update_lfo()
+{
+	switch (lfowavenum)
+	{
+		case 0: // triangle
+		lfoval = (lfotimer*lfodelta) >> 8;
+		if (lfotimer >= lfofreq/2)
+			lfoval = lfodepth - lfoval;
+		break;
+		case 1: // sawtooth up
+		lfoval = (lfotimer*lfodelta) >> 8;
+		break;
+		case 2: // sawtooth down
+		lfoval = lfodepth - ((lfotimer*lfodelta) >> 8);
+		break;
+		case 3: // square
+		lfoval = (lfotimer >= lfofreq/2) ? lfodepth : 0;
+		break;
+		case 4: // half square
+		lfoval = (lfotimer < lfofreq/4) ? lfodepth : 0;
+		break;
+		case 5: // half sawtooth up
+		if (lfotimer < lfofreq/2)
+			lfoval = (lfotimer*lfodelta) >> 7;
+		else
+			lfoval = 0;
+		break;
+		case 6: // half sawtooth down
+		if (lfotimer < lfofreq/2)
+			lfoval = lfodepth - ((lfotimer*lfodelta) >> 7);
+		else
+		lfoval = 0;
+		break;
+		case 7: // random
+		if (lfotimer == 0)
+			lfoval = noise() % lfodepth;
+		break;
+	}
+
+	if (lfotimer < lfofreq/2)
+		PORTD |= 1;
+	else
+		PORTD &= ~(1);
+
+	lfotimer++;
+	if (lfotimer >= lfofreq)
+		lfotimer = 0;
+}
+
+void update_synth_params(){
+	changeADCChannel(1);
+	pitch = readADC();
+	changeADCChannel(2);
+	lfodepth = readADC() >> 2;
+	changeADCChannel(3);
+	lfofreq = readADC() >> 2;
+	lfodelta = (lfofreq) ? (lfodepth*256U) / lfofreq : 0;
 }
 
 int main()
-{
-	DDRB=0x01; // Set PB0 pin as output for display select
-	spi_masterInit(); // Initialize spi module
-	displayDriverInit(); // Initialize display chip
+{	
+	DDRF = 0x111;
+	DDRA = 0xFF;
+	DDRB = 0xFF;
+	DDRD = 0x80;
+	DDRE = 0b00000111;
+	DDRG = 0x00;
+	adcInit();
+	int pressedE7 = 0;
+	int pressedE6 = 0;
+	wavenum = 0;
+	lfowavenum = 0;
+	waveform = waveforms[wavenum];
 	
-	// clear display (all zero's)
-	for (char i =1; i<=4; i++)
-	{
-		spi_writeWord(i,0);
+	setupTimer();
+	
+	while(1){
+		update_synth_params();
+		
+		update_pitch();
+		update_lfo();
+		
+		if(PINE & 0x80){
+			if(pressedE7 == 0){
+				changeWaveform();
+				pressedE7 = 1;
+			}
+		} else { 
+			pressedE7 = 0;
+		}
+		
+		if(PINE & 0x40){
+			if(pressedE6 == 0){
+				changelfoWaveform();
+				pressedE6 = 1;
+			}
+		} else {
+			pressedE6 = 0;
+		}
+				
+		_delay_us(100);
 	}
-	
-	wait(1000);
-	
-	writeLedDisplay(-876);
-	
-	wait(1000);
 	return (1);
 }
