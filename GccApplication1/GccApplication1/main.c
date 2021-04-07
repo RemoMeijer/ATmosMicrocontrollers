@@ -127,7 +127,6 @@ void setupTimer(){
 	OCR1A = 500;
 	TIMSK |= (1 << 4);
 	sei();
-	TCCR1A = 0b0;
 	TCCR1B = 0b1010;
 }
 
@@ -192,7 +191,7 @@ void update_synth_params(){
 
 int main()
 {	
-	DDRF = 0x111;
+	DDRF = 0x00;
 	DDRA = 0xFF;
 	DDRB = 0xFF;
 	DDRD = 0x80;
